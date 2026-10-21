@@ -1,1 +1,29 @@
-{"name": "Moja Kolekcja", "short_name": "Kolekcja", "start_url": "./", "display": "standalone", "background_color": "#f3f3f3", "theme_color": "#222", "lang": "pl"}
+{
+  "name": "Moja Kolekcja",
+  "short_name": "Kolekcja",
+  "id": "/Moja-kolekcja/",
+  "start_url": "/Moja-kolekcja/",
+  "scope": "/Moja-kolekcja/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#f3f3f3",
+  "theme_color": "#222222",
+  "lang": "pl",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
