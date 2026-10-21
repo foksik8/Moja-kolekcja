@@ -1,0 +1,1 @@
+Moja Kolekcja PWA v3. Usunięto Regał/Lokalizacja. Automatyczna migracja danych ze starych wersji zapisanych w tej samej przeglądarce. PWA wymaga HTTPS do instalacji jako aplikacja.
