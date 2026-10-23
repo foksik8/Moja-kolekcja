@@ -205,14 +205,52 @@ function renderGlobal(){
  $('globalList').innerHTML=arr.map(itemHTML).join('')||'<p>Brak wyników.</p>';
 }
 async function startScan(){
- if(!('BarcodeDetector' in window)){alert('Twój Chrome nie udostępnia skanera kodów w tej wersji. Możesz wpisać kod ręcznie.');return}
+ if(!navigator.mediaDevices?.getUserMedia){alert('Przeglądarka nie udostępnia dostępu do aparatu. Sprawdź, czy otwierasz aplikację przez HTTPS.');return}
+ if(!('BarcodeDetector' in window)){alert('Twój Chrome nie udostępnia automatycznego skanowania kodów. Możesz wpisać kod ręcznie.');return}
  try{
-  const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});
+  // Nie podajemy na sztywno formatów, bo różne wersje Chrome na Androidzie
+  // obsługują różne zestawy kodów. To był powód fałszywego komunikatu o aparacie.
+  let det;
+  try{
+   if(typeof BarcodeDetector.getSupportedFormats==='function'){
+    const supported=await BarcodeDetector.getSupportedFormats();
+    const wanted=['ean_13','ean_8','upc_a','upc_e','code_128'];
+    const formats=wanted.filter(f=>supported.includes(f));
+    det=formats.length?new BarcodeDetector({formats}):new BarcodeDetector();
+   }else{
+    det=new BarcodeDetector();
+   }
+  }catch(_){
+   det=new BarcodeDetector();
+  }
   $('scanArea').classList.remove('hide');
-  scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
-  $('scanner').srcObject=scanStream;await $('scanner').play();
-  const loop=async()=>{if(!scanStream)return;try{const codes=await det.detect($('scanner'));if(codes.length){$('scanCode').value=codes[0].rawValue;stopScan();await lookupBarcode();return}}catch(e){}scanTimer=setTimeout(loop,350)};loop();
- }catch(e){stopScan();alert('Nie udało się uruchomić aparatu. Sprawdź zgodę na używanie aparatu dla Chrome.')}
+  scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+  $('scanner').muted=true;
+  $('scanner').srcObject=scanStream;
+  await $('scanner').play();
+  $('scanMsg').textContent='📷 Skieruj aparat na kod kreskowy…';
+  const loop=async()=>{
+   if(!scanStream)return;
+   try{
+    const codes=await det.detect($('scanner'));
+    if(codes.length){
+     $('scanCode').value=codes[0].rawValue||'';
+     stopScan();
+     await lookupBarcode();
+     return;
+    }
+   }catch(e){}
+   scanTimer=setTimeout(loop,350);
+  };
+  loop();
+ }catch(e){
+  stopScan();
+  const name=e?.name||'UnknownError';
+  if(name==='NotAllowedError') alert('Chrome nie dostał zgody na aparat. Sprawdź uprawnienia aparatu dla tej strony.');
+  else if(name==='NotFoundError') alert('Nie znaleziono aparatu w telefonie.');
+  else if(name==='NotReadableError'||name==='TrackStartError') alert('Aparat jest zajęty przez inną aplikację. Zamknij aparat i inne aplikacje używające kamery, a następnie spróbuj ponownie.');
+  else alert('Nie udało się uruchomić aparatu ('+name+'). Spróbuj ponownie.');
+ }
 }
 function stopScan(){if(scanTimer)clearTimeout(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}if($('scanner'))$('scanner').srcObject=null;if($('scanArea'))$('scanArea').classList.add('hide')}
 async function lookupBarcode(){
