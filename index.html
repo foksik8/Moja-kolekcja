@@ -1,57 +1,248 @@
-<!doctype html><html lang="pl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#222"><link rel="manifest" href="manifest.json"><title>Moja Kolekcja</title><style>
-body{font-family:system-ui;margin:0;background:#f3f3f3;color:#222}header{background:#222;color:#fff;padding:16px}main{max-width:900px;margin:auto;padding:14px}button{padding:10px 14px;border:0;border-radius:9px;background:#222;color:#fff;margin:3px}.active{background:#666}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.card,form,.item{background:white;padding:14px;border-radius:12px;margin:10px 0}.card b{display:block;font-size:23px}input,select,textarea{width:100%;padding:10px;margin:5px 0 10px;box-sizing:border-box}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.item{display:flex;justify-content:space-between}.danger{background:#a22}.buy{background:#375d2b}.hide{display:none}@media(max-width:600px){.cards,.grid{grid-template-columns:1fr 1fr}.item{display:block}}
-.cover{width:70px;height:70px;object-fit:cover;border-radius:8px;margin-right:10px}.row{display:flex;align-items:center}.scanbox{background:#111;color:#fff;padding:12px;border-radius:12px;margin:10px 0}.scanbox video{width:100%;border-radius:10px;max-height:280px;object-fit:cover}.muted{color:#666;font-size:13px}.apiresult{background:#fff;border-radius:12px;padding:10px;margin:8px 0}.apiresult img{width:60px;height:60px;object-fit:cover;border-radius:7px;vertical-align:middle;margin-right:8px}
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#222">
+<link rel="manifest" href="manifest.json">
+<title>Moja Kolekcja</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:#f3f3f3;color:#222}
+header{background:#222;color:#fff;padding:16px}
+main{max-width:900px;margin:auto;padding:14px}
+h1,h2{margin-top:0}
+button{padding:11px 14px;border:0;border-radius:10px;background:#222;color:#fff;margin:3px;cursor:pointer}
+button.secondary{background:#666}.danger{background:#a22}.buy{background:#375d2b}
+input,select,textarea{width:100%;padding:11px;margin:5px 0 10px;border:1px solid #ccc;border-radius:9px;font:inherit}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.menu{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.menu button{min-height:100px;background:#fff;color:#222;border:1px solid #ddd;font-size:16px;text-align:left}
+.menu button b{display:block;font-size:30px;margin-bottom:6px}
+.menu button small{color:#666}
+.card,form,.item,.panel{background:#fff;padding:14px;border-radius:12px;margin:10px 0}
+.item{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.row{display:flex;align-items:center;min-width:0}.cover{width:70px;height:70px;object-fit:cover;border-radius:8px;margin-right:10px}
+.muted{color:#666;font-size:13px}.hide{display:none!important}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.topbar button{margin:0}
+.section-title{display:flex;justify-content:space-between;align-items:center}
+.scanbox{background:#111;color:#fff;padding:12px;border-radius:12px;margin:10px 0}
+.scanbox video{width:100%;border-radius:10px;max-height:300px;object-fit:cover}
+.apiresult{background:#fff;border-radius:12px;padding:10px;margin:8px 0}
+.count{font-size:13px;color:#666}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.item{display:block}.item>div:last-child{margin-top:8px}.menu button{min-height:90px}}
 </style>
-<header><main><h1>🎵📚 Moja Kolekcja</h1>CD • Kasety • Książki</main></header><main>
-<nav><button class="active" onclick="tab('c',this)">📦 Kolekcja</button><button onclick="tab('w',this)">🛒 Do kupienia</button><button onclick="tab('b',this)">💾 Kopia</button></nav>
-<section id="c"><div class="cards"><div class="card">💿<b id="cd">0</b>CD</div><div class="card">📼<b id="ka">0</b>kaset</div><div class="card">📚<b id="ks">0</b>książek</div><div class="card">🛒<b id="wc">0</b>do kupienia</div></div><input id="q" placeholder="🔎 Szukaj...">
-<form id="f"><h2>➕ Dodaj</h2><div class="grid"><label>Rodzaj<select id="t"><option>CD</option><option>Kaseta</option><option>Książka</option></select></label><label>Tytuł<input id="ti" required></label><label>Kod kreskowy / ISBN<input id="bc" inputmode="numeric"><button type="button" onclick="startScan()">📷 Skanuj kod</button> <button type="button" onclick="lookupBarcode()">🔎 Uzupełnij z kodu</button></label><label>Wykonawca / autor<input id="cr"></label><label>Rok<input id="yr" type="number"></label><label>Wydawnictwo<input id="pu"></label><label>Gatunek<input id="ge"></label><label>Stan<select id="co"><option>Bardzo dobry</option><option>Dobry</option><option>Średni</option><option>Słaby</option></select></label></div><label>Notatka<textarea id="no"></textarea></label><button>💾 Zapisz</button><input id="cover" type="hidden"><p id="apiMsg" class="muted"></p><div id="scanArea" class="hide scanbox"><video id="scanner" playsinline></video><button type="button" onclick="stopScan()">✕ Zamknij skaner</button></div></form><div id="list"></div></section>
-<section id="w" class="hide"><h2>🛒 Do kupienia</h2><form id="wf"><div class="grid"><label>Rodzaj<select id="wt"><option>CD</option><option>Kaseta</option><option>Książka</option></select></label><label>Tytuł<input id="wti" required></label><label>Wykonawca / autor<input id="wcr"></label><label>Rok<input id="wyr" type="number"></label><label>Maks. cena (€)<input id="wp" type="number"></label><label>Priorytet<select id="pr"><option>⭐⭐⭐⭐⭐</option><option>⭐⭐⭐⭐</option><option>⭐⭐⭐</option><option>⭐⭐</option><option>⭐</option></select></label></div><button>🛒 Dodaj</button></form><input id="wq" placeholder="🔎 Szukaj na liście..."><div id="wl"></div></section>
-<section id="b" class="hide"><h2>💾 Kopia danych</h2><button onclick="exp()">⬇️ Eksportuj</button><button onclick="document.querySelector('#imp').click()">⬆️ Importuj</button><input id="imp" type="file" accept=".json" style="display:none"><p id="mig"></p></section></main>
+</head>
+<body>
+<header><main><h1>🎵📚 Moja Kolekcja</h1><div>Twoja kolekcja CD, kaset i książek</div></main></header>
+<main>
+
+<section id="home">
+  <h2>Menu główne</h2>
+  <div class="menu">
+    <button onclick="openSection('cds')"><b>💿</b>CD <small id="mcd">0 pozycji</small></button>
+    <button onclick="openSection('tapes')"><b>📼</b>Kasety <small id="mka">0 pozycji</small></button>
+    <button onclick="openSection('books')"><b>📚</b>Książki <small id="mks">0 pozycji</small></button>
+    <button onclick="openSection('wanted')"><b>🛒</b>Do kupienia <small id="mw">0 pozycji</small></button>
+    <button onclick="openSection('scanner')"><b>📷</b>Skaner <small>kod kreskowy / ISBN</small></button>
+    <button onclick="openSection('search')"><b>🔎</b>Wyszukiwanie <small>cała kolekcja</small></button>
+    <button onclick="openSection('backup')"><b>💾</b>Kopia zapasowa <small>eksport / import</small></button>
+  </div>
+</section>
+
+<section id="cds" class="hide"></section>
+<section id="tapes" class="hide"></section>
+<section id="books" class="hide"></section>
+<section id="wanted" class="hide"></section>
+
+<section id="scanner" class="hide">
+  <div class="topbar"><button onclick="goHome()">← Menu</button><h2>📷 Skaner</h2></div>
+  <div class="panel">
+    <p>Skanuj kod kreskowy płyty, kasety lub ISBN książki.</p>
+    <label>Rodzaj
+      <select id="scanType"><option>CD</option><option>Kaseta</option><option>Książka</option></select>
+    </label>
+    <label>Kod kreskowy / ISBN
+      <input id="scanCode" inputmode="numeric" placeholder="np. 978... lub 509974...">
+    </label>
+    <button onclick="startScan()">📷 Uruchom aparat</button>
+    <button class="secondary" onclick="lookupBarcode()">🔎 Szukaj po kodzie</button>
+    <p id="scanMsg" class="muted"></p>
+    <div id="scanArea" class="hide scanbox">
+      <video id="scanner" playsinline></video>
+      <button type="button" onclick="stopScan()">✕ Zamknij skaner</button>
+    </div>
+  </div>
+  <div id="scanResult"></div>
+</section>
+
+<section id="search" class="hide">
+  <div class="topbar"><button onclick="goHome()">← Menu</button><h2>🔎 Wyszukiwanie</h2></div>
+  <input id="globalQ" placeholder="Szukaj tytułu, autora, wykonawcy, gatunku lub kodu...">
+  <div id="globalList"></div>
+</section>
+
+<section id="backup" class="hide">
+  <div class="topbar"><button onclick="goHome()">← Menu</button><h2>💾 Kopia zapasowa</h2></div>
+  <div class="panel">
+    <p>Eksport zapisuje całą kolekcję i listę „Do kupienia” do pliku.</p>
+    <button onclick="exp()">⬇️ Eksportuj</button>
+    <button onclick="document.querySelector('#imp').click()">⬆️ Importuj</button>
+    <input id="imp" type="file" accept=".json" style="display:none">
+    <p id="mig" class="muted"></p>
+  </div>
+</section>
+
+</main>
+
 <script>
-const $=x=>document.getElementById(x),K='moja_kolekcja_data_v3';let d=[],w=[],mig='';
-const clean=x=>({id:x.id||Date.now()+Math.random(),type:x.type||'CD',title:x.title||'',creator:x.creator||'',year:x.year||'',publisher:x.publisher||'',genre:x.genre||'',condition:x.condition||'Bardzo dobry',notes:x.notes||'',barcode:x.barcode||'',cover:x.cover||'',sourceId:x.sourceId||''});
-function load(){let a=localStorage.getItem(K);if(a){try{let o=JSON.parse(a);d=(o.collection||[]).map(clean);w=o.wanted||[]}catch(e){}}else{try{d=JSON.parse(localStorage.getItem('mk_collection')||'[]').map(clean);w=JSON.parse(localStorage.getItem('mk_wanted')||'[]');if(d.length||w.length){mig='Automatycznie przeniesiono dane ze starszej wersji. Pole Regał/Lokalizacja nie zostało przeniesione.';save()}}catch(e){}}}
-function save(){localStorage.setItem(K,JSON.stringify({version:3,collection:d,wanted:w}));render()}
+const $=id=>document.getElementById(id);
+const K='moja_kolekcja_data_v3';
+let d=[],w=[],currentType='CD',scanStream=null,scanTimer=null;
+
+function clean(x){
+ return {id:x.id||Date.now()+Math.random(),type:x.type||'CD',title:x.title||'',creator:x.creator||'',
+ year:x.year||'',publisher:x.publisher||'',genre:x.genre||'',condition:x.condition||'Bardzo dobry',
+ notes:x.notes||'',barcode:x.barcode||'',cover:x.cover||'',sourceId:x.sourceId||''};
+}
+function load(){
+ let a=localStorage.getItem(K);
+ if(a){try{let o=JSON.parse(a);d=(o.collection||[]).map(clean);w=o.wanted||[]}catch(e){}}
+ else{
+  try{d=JSON.parse(localStorage.getItem('mk_collection')||'[]').map(clean);
+      w=JSON.parse(localStorage.getItem('mk_wanted')||'[]');
+      if(d.length||w.length)save();}
+  catch(e){}
+ }
+}
+function save(){localStorage.setItem(K,JSON.stringify({version:7,collection:d,wanted:w}));renderMenu()}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function render(){cd.textContent=d.filter(x=>x.type=='CD').length;ka.textContent=d.filter(x=>x.type=='Kaseta').length;ks.textContent=d.filter(x=>x.type=='Książka').length;wc.textContent=w.length;let z=q.value.toLowerCase();list.innerHTML=d.filter(x=>(x.title+' '+x.creator+' '+x.genre).toLowerCase().includes(z)).map(x=>`<div class=item><div class=row>${x.cover?`<img class=cover src="${esc(x.cover)}" loading="lazy" onerror="this.style.display='none'">`:''}<div><b>${esc(x.title)}</b><br>${esc(x.type)} • ${esc(x.creator)} ${x.year?'• '+x.year:''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}</div></div><button class=danger onclick="del(${x.id})">Usuń</button></div>`).join('')||'<p>Brak pozycji.</p>';let y=wq.value.toLowerCase();wl.innerHTML=w.filter(x=>(x.title+' '+x.creator).toLowerCase().includes(y)).map(x=>`<div class=item><div><b>${esc(x.title)}</b><br>${esc(x.type)} • ${esc(x.creator)} ${x.year?'• '+x.year:''}<br>${x.prio||'⭐⭐⭐'} ${x.price?'• max '+x.price+' €':''}</div><div><button onclick="search(${x.id})">🔎 Szukaj</button><button class=buy onclick="buy(${x.id})">✓ Kupione</button><button class=danger onclick="dw(${x.id})">Usuń</button></div></div>`).join('')||'<p>Lista pusta.</p>';mig&&( $('mig').textContent=mig)}
-f.onsubmit=e=>{e.preventDefault();d.push(clean({type:t.value,title:ti.value,creator:cr.value,year:yr.value,publisher:pu.value,genre:ge.value,condition:co.value,notes:no.value,barcode:bc.value}));e.target.reset();save()}
-wf.onsubmit=e=>{e.preventDefault();w.push({id:Date.now(),type:wt.value,title:wti.value,creator:wcr.value,year:wyr.value,price:wp.value,prio:pr.value});e.target.reset();save()}
-function del(i){d=d.filter(x=>x.id!=i);save()}function dw(i){w=w.filter(x=>x.id!=i);save()}function search(i){let x=w.find(a=>a.id==i);location.href='https://www.google.com/search?q='+encodeURIComponent([x.title,x.creator,x.year,x.type,'kupić'].filter(Boolean).join(' '))}
-function buy(i){let x=w.find(a=>a.id==i);d.push(clean(x));w=w.filter(a=>a.id!=i);save();tab('c',document.querySelector('nav button'))}
-function tab(i,b){['c','w','b'].forEach(x=>$(x).classList.toggle('hide',x!=i));document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active')}
-let scanStream=null,scanTimer=null;
+function goHome(){
+ document.querySelectorAll('main>section').forEach(s=>s.classList.add('hide'));
+ $('home').classList.remove('hide');
+ stopScan();
+}
+function openSection(id){
+ document.querySelectorAll('main>section').forEach(s=>s.classList.add('hide'));
+ $(id).classList.remove('hide');
+ if(['cds','tapes','books'].includes(id)) renderCollectionSection(id);
+ if(id==='wanted') renderWanted();
+ if(id==='search') renderGlobal();
+}
+function renderMenu(){
+ $('mcd').textContent=d.filter(x=>x.type==='CD').length+' pozycji';
+ $('mka').textContent=d.filter(x=>x.type==='Kaseta').length+' pozycji';
+ $('mks').textContent=d.filter(x=>x.type==='Książka').length+' pozycji';
+ $('mw').textContent=w.length+' pozycji';
+}
+function itemForm(type){
+ currentType=type;
+ return `<div class="panel">
+ <h3>➕ Dodaj ${esc(type)}</h3>
+ <form onsubmit="addItem(event,'${type}')">
+ <div class="grid">
+ <label>Tytuł<input id="ntitle" required></label>
+ <label>Wykonawca / autor<input id="ncreator"></label>
+ <label>Rok<input id="nyear" type="number"></label>
+ <label>Wydawnictwo<input id="npub"></label>
+ <label>Gatunek<input id="ngenre"></label>
+ <label>Stan<select id="ncondition"><option>Bardzo dobry</option><option>Dobry</option><option>Średni</option><option>Słaby</option></select></label>
+ <label>Kod kreskowy / ISBN<input id="nbarcode" inputmode="numeric"></label>
+ </div>
+ <label>Notatka<textarea id="nnotes"></textarea></label>
+ <button>💾 Zapisz</button>
+ </form></div>`;
+}
+function renderCollectionSection(id){
+ const type=id==='cds'?'CD':id==='tapes'?'Kaseta':'Książka';
+ const sec=$(id);
+ const items=d.filter(x=>x.type===type);
+ sec.innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>${type==='CD'?'💿':type==='Kaseta'?'📼':'📚'} ${type}</h2></div>
+ ${itemForm(type)}
+ <input id="sectionQ" placeholder="🔎 Szukaj w ${type}..." oninput="renderSectionList('${id}')">
+ <div id="sectionList"></div>`;
+ renderSectionList(id);
+}
+function renderSectionList(id){
+ const type=id==='cds'?'CD':id==='tapes'?'Kaseta':'Książka';
+ const q=(($('sectionQ')||{}).value||'').toLowerCase();
+ const arr=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode).toLowerCase().includes(q));
+ $('sectionList').innerHTML=arr.map(x=>itemHTML(x)).join('')||'<p>Brak pozycji.</p>';
+}
+function itemHTML(x){
+ return `<div class="item"><div class="row">${x.cover?`<img class="cover" src="${esc(x.cover)}" loading="lazy" onerror="this.style.display='none'">`:''}<div><b>${esc(x.title)}</b><br>${esc(x.type)} • ${esc(x.creator)} ${x.year?'• '+esc(x.year):''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}</div></div><button class="danger" onclick="del(${x.id})">Usuń</button></div>`;
+}
+function addItem(e,type){
+ e.preventDefault();
+ d.push(clean({type,title:$('ntitle').value,creator:$('ncreator').value,year:$('nyear').value,publisher:$('npub').value,genre:$('ngenre').value,condition:$('ncondition').value,notes:$('nnotes').value,barcode:$('nbarcode').value}));
+ save(); renderCollectionSection(type==='CD'?'cds':type==='Kaseta'?'tapes':'books');
+}
+function del(id){d=d.filter(x=>x.id!=id);save(); if(!$('home').classList.contains('hide'))return; const sec=d.find(x=>x.id==id); renderMenu()}
+function renderWanted(){
+ $('wanted').innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>🛒 Do kupienia</h2></div>
+ <form onsubmit="addWanted(event)"><div class="grid">
+ <label>Rodzaj<select id="wt"><option>CD</option><option>Kaseta</option><option>Książka</option></select></label>
+ <label>Tytuł<input id="wti" required></label><label>Wykonawca / autor<input id="wcr"></label>
+ <label>Rok<input id="wyr" type="number"></label><label>Maks. cena (€)<input id="wp" type="number"></label>
+ <label>Priorytet<select id="pr"><option>⭐⭐⭐⭐⭐</option><option>⭐⭐⭐⭐</option><option>⭐⭐⭐</option><option>⭐⭐</option><option>⭐</option></select></label>
+ </div><button>🛒 Dodaj</button></form>
+ <input id="wq" placeholder="🔎 Szukaj..." oninput="renderWantedList()"><div id="wl"></div>`;
+ renderWantedList();
+}
+function addWanted(e){e.preventDefault();w.push({id:Date.now(),type:$('wt').value,title:$('wti').value,creator:$('wcr').value,year:$('wyr').value,price:$('wp').value,prio:$('pr').value});save();renderWanted()}
+function renderWantedList(){
+ const q=(($('wq')||{}).value||'').toLowerCase();
+ const arr=w.filter(x=>(x.title+' '+x.creator+' '+x.type).toLowerCase().includes(q));
+ $('wl').innerHTML=arr.map(x=>`<div class="item"><div><b>${esc(x.title)}</b><br>${esc(x.type)} • ${esc(x.creator)} ${x.year?'• '+x.year:''}<br>${x.prio||'⭐⭐⭐'} ${x.price?'• max '+x.price+' €':''}</div><div><button onclick="searchWanted(${x.id})">🔎 Szukaj</button><button class="buy" onclick="buy(${x.id})">✓ Kupione</button><button class="danger" onclick="dw(${x.id})">Usuń</button></div></div>`).join('')||'<p>Lista pusta.</p>';
+}
+function dw(id){w=w.filter(x=>x.id!=id);save();renderWanted()}
+function searchWanted(id){const x=w.find(a=>a.id==id);location.href='https://www.google.com/search?q='+encodeURIComponent([x.title,x.creator,x.year,x.type,'kupić'].filter(Boolean).join(' '))}
+function buy(id){const x=w.find(a=>a.id==id);d.push(clean(x));w=w.filter(x=>x.id!=id);save();renderWanted()}
+function renderGlobal(){
+ const q=(($('globalQ')||{}).value||'').toLowerCase();
+ const arr=d.filter(x=>(x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.type).toLowerCase().includes(q));
+ $('globalList').innerHTML=arr.map(itemHTML).join('')||'<p>Brak wyników.</p>';
+}
 async function startScan(){
-  if(!('BarcodeDetector' in window)){alert('Twój Chrome nie udostępnia skanera kodów w tej wersji. Możesz wpisać kod ręcznie.');return}
-  try{
-    const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});
-    scanArea.classList.remove('hide');
-    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
-    scanner.srcObject=scanStream; await scanner.play();
-    const loop=async()=>{if(!scanStream)return;try{const codes=await det.detect(scanner);if(codes.length){bc.value=codes[0].rawValue;stopScan();await lookupBarcode();return}}catch(e){}scanTimer=setTimeout(loop,350)};loop();
-  }catch(e){stopScan();alert('Nie udało się uruchomić aparatu. Sprawdź zgodę na używanie aparatu dla Chrome.');}
+ if(!('BarcodeDetector' in window)){alert('Twój Chrome nie udostępnia skanera kodów w tej wersji. Możesz wpisać kod ręcznie.');return}
+ try{
+  const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});
+  $('scanArea').classList.remove('hide');
+  scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+  $('scanner').srcObject=scanStream;await $('scanner').play();
+  const loop=async()=>{if(!scanStream)return;try{const codes=await det.detect($('scanner'));if(codes.length){$('scanCode').value=codes[0].rawValue;stopScan();await lookupBarcode();return}}catch(e){}scanTimer=setTimeout(loop,350)};loop();
+ }catch(e){stopScan();alert('Nie udało się uruchomić aparatu. Sprawdź zgodę na używanie aparatu dla Chrome.')}
 }
-function stopScan(){if(scanTimer)clearTimeout(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}scanner.srcObject=null;scanArea.classList.add('hide')}
+function stopScan(){if(scanTimer)clearTimeout(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}if($('scanner'))$('scanner').srcObject=null;if($('scanArea'))$('scanArea').classList.add('hide')}
 async function lookupBarcode(){
-  const code=(bc.value||'').replace(/[^0-9Xx]/g,''); if(!code)return;
-  apiMsg.textContent='🔎 Szukam informacji dla kodu '+code+'…';
-  try{
-    if(t.value==='Książka' && (code.length===10||code.length===13)){
-      const r=await fetch('https://openlibrary.org/isbn/'+encodeURIComponent(code)+'.json');
-      if(r.ok){const b=await r.json();
-        ti.value=b.title||ti.value; cr.value=(b.authors||[]).map(a=>a.name).join(', ')||cr.value;
-        yr.value=(b.publish_date||'').match(/(\d{4})/)?.[1]||yr.value; pu.value=(b.publishers||[])[0]?.name||pu.value;
-        cover.value='https://covers.openlibrary.org/b/isbn/'+encodeURIComponent(code)+'-M.jpg';
-        apiMsg.textContent='✅ Dane książki uzupełnione. Sprawdź je i kliknij Zapisz.';return;
-      }
-    }
-    const url='https://musicbrainz.org/ws/2/release/?query='+encodeURIComponent('barcode:'+code)+'&fmt=json&limit=5';
-    const r=await fetch(url,{headers:{'Accept':'application/json'}}); if(!r.ok)throw new Error('API'); const j=await r.json();
-    if(j.releases?.length){const x=j.releases[0];ti.value=x.title||ti.value;cr.value=(x['artist-credit']||[]).map(a=>a.name||a.artist?.name).join(', ')||cr.value;yr.value=(x.date||'').slice(0,4)||yr.value;pu.value=(x['label-info']||[])[0]?.label?.name||pu.value;ge.value=(x['release-group']?.['primary-type'])||ge.value;const mb=x.id;if(mb)cover.value='https://coverartarchive.org/release/'+mb+'/front-250';apiMsg.textContent='✅ Dane wydania znalezione. Sprawdź je i kliknij Zapisz.';return;}
-    apiMsg.textContent='Nie znalazłem tego kodu. Możesz uzupełnić dane ręcznie.';
-  }catch(e){apiMsg.textContent='Nie udało się pobrać danych. Sprawdź internet albo wpisz dane ręcznie.'}
+ const code=($('scanCode').value||'').replace(/[^0-9Xx]/g,'');if(!code)return;
+ $('scanMsg').textContent='🔎 Szukam informacji dla kodu '+code+'…';
+ $('scanResult').innerHTML='';
+ try{
+  const type=$('scanType').value;
+  if(type==='Książka'&&(code.length===10||code.length===13)){
+   const r=await fetch('https://openlibrary.org/isbn/'+encodeURIComponent(code)+'.json');
+   if(r.ok){const b=await r.json();showScanResult({type,title:b.title||'',creator:(b.authors||[]).map(a=>a.name).join(', '),year:(b.publish_date||'').match(/(\\d{4})/)?.[1]||'',publisher:(b.publishers||[])[0]?.name||'',cover:'https://covers.openlibrary.org/b/isbn/'+encodeURIComponent(code)+'-M.jpg',barcode:code});return}
+  }
+  const r=await fetch('https://musicbrainz.org/ws/2/release/?query='+encodeURIComponent('barcode:'+code)+'&fmt=json&limit=5',{headers:{'Accept':'application/json'}});
+  if(!r.ok)throw new Error();
+  const j=await r.json();
+  if(j.releases?.length){const x=j.releases[0];showScanResult({type,title:x.title||'',creator:(x['artist-credit']||[]).map(a=>a.name||a.artist?.name).join(', '),year:(x.date||'').slice(0,4),publisher:(x['label-info']||[])[0]?.label?.name||'',genre:x['release-group']?.['primary-type']||'',cover:x.id?'https://coverartarchive.org/release/'+x.id+'/front-250':'',barcode:code});return}
+  $('scanMsg').textContent='Nie znalazłem tego kodu. Kod pozostaje zapisany poniżej — możesz użyć go ręcznie.';
+ }catch(e){$('scanMsg').textContent='Nie udało się pobrać danych. Kod jest odczytany; możesz wpisać dane ręcznie.'}
 }
-function exp(){let a=document.createElement('a'),b=new Blob([JSON.stringify({version:3,collection:d,wanted:w},null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='moja_kolekcja_backup.json';a.click()}
-imp.onchange=e=>{let r=new FileReader();r.onload=()=>{try{let o=JSON.parse(r.result);d=(o.collection||[]).map(clean);w=o.wanted||[];save();alert('Zaimportowano')}catch{alert('Błędny plik')}};r.readAsText(e.target.files[0])}
-q.oninput=wq.oninput=render;load();render();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
-</script></html>
+function showScanResult(x){
+ $('scanMsg').textContent='✅ Znaleziono dane. Sprawdź je i dodaj do kolekcji.';
+ $('scanResult').innerHTML=`<div class="apiresult">${x.cover?`<img src="${esc(x.cover)}" onerror="this.style.display='none'">`:''}<b>${esc(x.title)||'Brak tytułu'}</b><br>${esc(x.creator)} ${x.year?'• '+esc(x.year):''}<br><button onclick='saveScanned(${JSON.stringify(x).replace(/'/g,"&#39;")})'>💾 Dodaj do kolekcji</button></div>`;
+}
+function saveScanned(x){
+ d.push(clean(x));save();$('scanResult').innerHTML='<div class="panel">✅ Dodano do kolekcji.</div>';
+}
+function exp(){const a=document.createElement('a'),b=new Blob([JSON.stringify({version:7,collection:d,wanted:w},null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='moja_kolekcja_backup.json';a.click()}
+$('imp').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);d=(o.collection||[]).map(clean);w=o.wanted||[];save();alert('Zaimportowano dane.')}catch{alert('Błędny plik kopii zapasowej.')}};r.readAsText(f)}
+$('globalQ').oninput=renderGlobal;
+load();renderMenu();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body></html>
