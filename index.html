@@ -171,7 +171,9 @@ function renderSectionList(id){
  $('sectionList').innerHTML=arr.map(x=>itemHTML(x)).join('')||'<p>Brak pozycji.</p>';
 }
 function itemHTML(x){
- return `<div class="item"><div class="row">${x.cover?`<img class="cover" src="${esc(x.cover)}" loading="lazy" onerror="this.style.display='none'">`:''}<div><b>${esc(x.title)}</b><br>${esc(x.type)} • ${esc(x.creator)} ${x.year?'• '+esc(x.year):''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}</div></div><button class="danger" onclick="del(${x.id})">Usuń</button></div>`;
+ const main=esc(x.creator||'Brak autora/wykonawcy');
+ const title=esc(x.title||'Bez tytułu');
+ return `<div class="item"><div class="row">${x.cover?`<img class="cover" src="${esc(x.cover)}" loading="lazy" onerror="this.style.display='none'">`:''}<div><b>${main}</b><br><span class="muted">${title}</span><br>${esc(x.type)} ${x.year?'• '+esc(x.year):''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}</div></div><button class="danger" onclick="del(${x.id})">Usuń</button></div>`;
 }
 function addItem(e,type){
  e.preventDefault();
@@ -194,7 +196,7 @@ function addWanted(e){e.preventDefault();w.push({id:Date.now(),type:$('wt').valu
 function renderWantedList(){
  const q=(($('wq')||{}).value||'').toLowerCase();
  const arr=w.filter(x=>(x.title+' '+x.creator+' '+x.type).toLowerCase().includes(q));
- $('wl').innerHTML=arr.map(x=>`<div class="item"><div><b>${esc(x.title)}</b><br>${esc(x.type)} • ${esc(x.creator)} ${x.year?'• '+x.year:''}<br>${x.prio||'⭐⭐⭐'} ${x.price?'• max '+x.price+' €':''}</div><div><button onclick="searchWanted(${x.id})">🔎 Szukaj</button><button class="buy" onclick="buy(${x.id})">✓ Kupione</button><button class="danger" onclick="dw(${x.id})">Usuń</button></div></div>`).join('')||'<p>Lista pusta.</p>';
+ $('wl').innerHTML=arr.map(x=>`<div class="item"><div><b>${esc(x.creator||'Brak autora/wykonawcy')}</b><br><span class="muted">${esc(x.title||'Bez tytułu')}</span><br>${esc(x.type)} ${x.year?'• '+x.year:''}<br>${x.prio||'⭐⭐⭐'} ${x.price?'• max '+x.price+' €':''}</div><div><button onclick="searchWanted(${x.id})">🔎 Szukaj</button><button class="buy" onclick="buy(${x.id})">✓ Kupione</button><button class="danger" onclick="dw(${x.id})">Usuń</button></div></div>`).join('')||'<p>Lista pusta.</p>';
 }
 function dw(id){w=w.filter(x=>x.id!=id);save();renderWanted()}
 function searchWanted(id){const x=w.find(a=>a.id==id);location.href='https://www.google.com/search?q='+encodeURIComponent([x.title,x.creator,x.year,x.type,'kupić'].filter(Boolean).join(' '))}
@@ -205,34 +207,44 @@ function renderGlobal(){
  $('globalList').innerHTML=arr.map(itemHTML).join('')||'<p>Brak wyników.</p>';
 }
 async function startScan(){
- if(!navigator.mediaDevices?.getUserMedia){alert('Przeglądarka nie udostępnia dostępu do aparatu. Sprawdź, czy otwierasz aplikację przez HTTPS.');return}
- if(!('BarcodeDetector' in window)){alert('Twój Chrome nie udostępnia automatycznego skanowania kodów. Możesz wpisać kod ręcznie.');return}
+ const video=$('scanner'), msg=$('scanMsg');
+ if(!navigator.mediaDevices?.getUserMedia){
+  alert('Chrome nie udostępnia aparatu tej stronie. Otwórz aplikację przez HTTPS.');
+  return;
+ }
  try{
-  // Nie podajemy na sztywno formatów, bo różne wersje Chrome na Androidzie
-  // obsługują różne zestawy kodów. To był powód fałszywego komunikatu o aparacie.
-  let det;
   try{
-   if(typeof BarcodeDetector.getSupportedFormats==='function'){
-    const supported=await BarcodeDetector.getSupportedFormats();
-    const wanted=['ean_13','ean_8','upc_a','upc_e','code_128'];
-    const formats=wanted.filter(f=>supported.includes(f));
-    det=formats.length?new BarcodeDetector({formats}):new BarcodeDetector();
-   }else{
-    det=new BarcodeDetector();
-   }
-  }catch(_){
-   det=new BarcodeDetector();
+   scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  }catch(e){
+   scanStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
   }
   $('scanArea').classList.remove('hide');
-  scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
-  $('scanner').muted=true;
-  $('scanner').srcObject=scanStream;
-  await $('scanner').play();
-  $('scanMsg').textContent='📷 Skieruj aparat na kod kreskowy…';
+  video.muted=true;
+  video.playsInline=true;
+  video.srcObject=scanStream;
+  await video.play();
+  msg.textContent='📷 Aparat działa. Skieruj go na kod kreskowy…';
+
+  if(!('BarcodeDetector' in window)){
+   msg.textContent='📷 Aparat działa. Automatyczne skanowanie nie jest dostępne — wpisz kod ręcznie.';
+   return;
+  }
+
+  let detector;
+  try{
+   const supported=typeof BarcodeDetector.getSupportedFormats==='function'
+    ? await BarcodeDetector.getSupportedFormats() : [];
+   const wanted=['ean_13','ean_8','upc_a','upc_e','code_128'];
+   const formats=wanted.filter(f=>supported.includes(f));
+   detector=formats.length ? new BarcodeDetector({formats}) : new BarcodeDetector();
+  }catch(e){
+   detector=new BarcodeDetector();
+  }
+
   const loop=async()=>{
    if(!scanStream)return;
    try{
-    const codes=await det.detect($('scanner'));
+    const codes=await detector.detect(video);
     if(codes.length){
      $('scanCode').value=codes[0].rawValue||'';
      stopScan();
@@ -240,16 +252,16 @@ async function startScan(){
      return;
     }
    }catch(e){}
-   scanTimer=setTimeout(loop,350);
+   scanTimer=setTimeout(loop,400);
   };
   loop();
  }catch(e){
   stopScan();
-  const name=e?.name||'UnknownError';
-  if(name==='NotAllowedError') alert('Chrome nie dostał zgody na aparat. Sprawdź uprawnienia aparatu dla tej strony.');
-  else if(name==='NotFoundError') alert('Nie znaleziono aparatu w telefonie.');
-  else if(name==='NotReadableError'||name==='TrackStartError') alert('Aparat jest zajęty przez inną aplikację. Zamknij aparat i inne aplikacje używające kamery, a następnie spróbuj ponownie.');
-  else alert('Nie udało się uruchomić aparatu ('+name+'). Spróbuj ponownie.');
+  const n=e?.name||'UnknownError';
+  if(n==='NotAllowedError') alert('Android/Chrome odrzucił dostęp do aparatu. Sprawdź uprawnienie strony i globalny „Dostęp do aparatu”.');
+  else if(n==='NotFoundError') alert('Nie znaleziono aparatu w telefonie.');
+  else if(n==='NotReadableError'||n==='TrackStartError') alert('Aparat jest obecnie zajęty. Zamknij aplikację Aparat i inne aplikacje używające kamery.');
+  else alert('Nie udało się uruchomić aparatu. Kod błędu: '+n);
  }
 }
 function stopScan(){if(scanTimer)clearTimeout(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}if($('scanner'))$('scanner').srcObject=null;if($('scanArea'))$('scanArea').classList.add('hide')}
