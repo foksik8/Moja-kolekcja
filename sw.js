@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moja-kolekcja-v9';
+const CACHE_NAME = 'moja-kolekcja-v10';
 const APP_ASSETS = [
   './',
   './index.html',

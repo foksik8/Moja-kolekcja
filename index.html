@@ -164,10 +164,31 @@ function renderCollectionSection(id){
  <div id="sectionList"></div>`;
  renderSectionList(id);
 }
+function authorSurname(name){
+ const s=String(name||'').trim();
+ if(!s)return '';
+ if(s.includes(','))return s.split(',')[0].trim();
+ const parts=s.split(/\\s+/).filter(Boolean);
+ return parts.length>1?parts[parts.length-1]:s;
+}
+function sortCollection(items,type){
+ return items.slice().sort((a,b)=>{
+  const ka=type==='Książka'?authorSurname(a.creator):String(a.creator||'').trim();
+  const kb=type==='Książka'?authorSurname(b.creator):String(b.creator||'').trim();
+  const byCreator=ka.localeCompare(kb,'pl',{sensitivity:'base',numeric:true});
+  if(byCreator!==0)return byCreator;
+  const ya=Number.parseInt(a.year,10), yb=Number.parseInt(b.year,10);
+  const hasYa=Number.isFinite(ya)&&ya>0, hasYb=Number.isFinite(yb)&&yb>0;
+  if(hasYa&&hasYb&&ya!==yb)return ya-yb;
+  if(hasYa!==hasYb)return hasYa?-1:1;
+  return String(a.title||'').localeCompare(String(b.title||''),'pl',{sensitivity:'base',numeric:true});
+ });
+}
 function renderSectionList(id){
  const type=id==='cds'?'CD':id==='tapes'?'Kaseta':'Książka';
  const q=(($('sectionQ')||{}).value||'').toLowerCase();
- const arr=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode).toLowerCase().includes(q));
+ const found=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode).toLowerCase().includes(q));
+ const arr=sortCollection(found,type);
  $('sectionList').innerHTML=arr.map(x=>itemHTML(x)).join('')||'<p>Brak pozycji.</p>';
 }
 function itemHTML(x){
@@ -203,7 +224,12 @@ function searchWanted(id){const x=w.find(a=>a.id==id);location.href='https://www
 function buy(id){const x=w.find(a=>a.id==id);d.push(clean(x));w=w.filter(x=>x.id!=id);save();renderWanted()}
 function renderGlobal(){
  const q=(($('globalQ')||{}).value||'').toLowerCase();
- const arr=d.filter(x=>(x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.type).toLowerCase().includes(q));
+ const found=d.filter(x=>(x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.type).toLowerCase().includes(q));
+ const arr=[
+  ...sortCollection(found.filter(x=>x.type==='CD'),'CD'),
+  ...sortCollection(found.filter(x=>x.type==='Kaseta'),'Kaseta'),
+  ...sortCollection(found.filter(x=>x.type==='Książka'),'Książka')
+ ];
  $('globalList').innerHTML=arr.map(itemHTML).join('')||'<p>Brak wyników.</p>';
 }
 async function startScan(){
@@ -225,12 +251,14 @@ async function startScan(){
   await video.play();
   msg.textContent='📷 Aparat działa. Skieruj go na kod kreskowy…';
 
-  if(!('BarcodeDetector' in window)){
+  // Nie zatrzymujemy aparatu, jeśli BarcodeDetector jest dostępny w Chrome,
+  // ale jego konstruktor nie obsługuje danego urządzenia.
+  if(!('BarcodeDetector' in window) || typeof BarcodeDetector!=='function'){
    msg.textContent='📷 Aparat działa. Automatyczne skanowanie nie jest dostępne — wpisz kod ręcznie.';
    return;
   }
 
-  let detector;
+  let detector=null;
   try{
    const supported=typeof BarcodeDetector.getSupportedFormats==='function'
     ? await BarcodeDetector.getSupportedFormats() : [];
@@ -238,7 +266,12 @@ async function startScan(){
    const formats=wanted.filter(f=>supported.includes(f));
    detector=formats.length ? new BarcodeDetector({formats}) : new BarcodeDetector();
   }catch(e){
-   detector=new BarcodeDetector();
+   detector=null;
+  }
+
+  if(!detector){
+   msg.textContent='📷 Aparat działa. Automatyczne skanowanie nie jest dostępne na tym telefonie — wpisz kod ręcznie.';
+   return;
   }
 
   const loop=async()=>{
