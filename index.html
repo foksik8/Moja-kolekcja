@@ -26,8 +26,6 @@ input,select,textarea{width:100%;padding:11px;margin:5px 0 10px;border:1px solid
 .muted{color:#666;font-size:13px}.hide{display:none!important}
 .topbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .topbar button{margin:0}
-.add-toggle{width:46px;height:46px;padding:0;font-size:30px;line-height:1;border-radius:50%;margin-left:auto}
-.add-panel{margin-top:10px}
 .section-title{display:flex;justify-content:space-between;align-items:center}
 .scanbox{background:#111;color:#fff;padding:12px;border-radius:12px;margin:10px 0}
 .scanbox video{width:100%;border-radius:10px;max-height:300px;object-fit:cover}
@@ -140,7 +138,8 @@ function renderMenu(){
 }
 function itemForm(type){
  currentType=type;
- return `<div id="addPanel" class="panel add-panel hide">
+ return `<button type="button" class="add-toggle" onclick="toggleItemForm()">＋ Dodaj pozycję</button>
+ <div id="itemFormPanel" class="panel hide">
  <h3>➕ Dodaj ${esc(type)}</h3>
  <form onsubmit="addItem(event,'${type}')">
  <div class="grid">
@@ -154,19 +153,20 @@ function itemForm(type){
  </div>
  <label>Notatka<textarea id="nnotes"></textarea></label>
  <button>💾 Zapisz</button>
+ <button type="button" class="mutedbtn" onclick="toggleItemForm(false)">Anuluj</button>
  </form></div>`;
 }
-function toggleAdd(){
- const panel=$('addPanel');
- if(!panel)return;
- panel.classList.toggle('hide');
- if(!panel.classList.contains('hide')){const field=panel.querySelector('input');if(field)field.focus();}
+function toggleItemForm(force){
+ const panel=$('itemFormPanel'); if(!panel)return;
+ const shouldShow=typeof force==='boolean'?force:panel.classList.contains('hide');
+ panel.classList.toggle('hide',!shouldShow);
+ if(shouldShow){const field=$('ntitle');if(field)field.focus();}
 }
 function renderCollectionSection(id){
  const type=id==='cds'?'CD':id==='tapes'?'Kaseta':'Książka';
  const sec=$(id);
  const items=d.filter(x=>x.type===type);
- sec.innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>${type==='CD'?'💿':type==='Kaseta'?'📼':'📚'} ${type}</h2><button type="button" class="add-toggle" aria-label="Dodaj pozycję" title="Dodaj pozycję" onclick="toggleAdd()">＋</button></div>
+ sec.innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>${type==='CD'?'💿':type==='Kaseta'?'📼':'📚'} ${type}</h2></div>
  ${itemForm(type)}
  <input id="sectionQ" placeholder="🔎 Szukaj w ${type}..." oninput="renderSectionList('${id}')">
  <div id="sectionList"></div>`;
@@ -243,60 +243,60 @@ function renderGlobal(){
 async function startScan(){
  const video=$('scanner'), msg=$('scanMsg');
  let stage='sprawdzanie dostępu do aparatu';
+ if(!navigator.mediaDevices?.getUserMedia){
+  msg.textContent='BŁĄD na etapie: '+stage+'. Ta strona nie udostępnia getUserMedia. Otwórz aplikację przez HTTPS.';
+  alert(msg.textContent); return;
+ }
  try{
-  if(!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia!=='function'){
-   throw new Error('Ta strona nie udostępnia funkcji getUserMedia. Otwórz aplikację przez HTTPS w Chrome.');
-  }
-  stage='pobieranie obrazu z tylnego aparatu';
+  stage='uruchamianie tylnego aparatu (getUserMedia)';
   try{
    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
   }catch(firstError){
-   stage='ponowna próba uruchomienia dowolnego aparatu';
+   stage='uruchamianie dowolnego aparatu (wariant zapasowy)';
    scanStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
   }
-  stage='przygotowanie podglądu aparatu';
+  stage='przygotowanie elementu wideo';
   $('scanArea').classList.remove('hide');
-  video.muted=true;
-  video.playsInline=true;
-  video.srcObject=scanStream;
-  stage='uruchamianie podglądu wideo';
+  video.muted=true; video.playsInline=true; video.srcObject=scanStream;
+  stage='odtwarzanie obrazu z aparatu (video.play)';
   await video.play();
   msg.textContent='📷 Aparat działa. Skieruj go na kod kreskowy…';
 
   stage='sprawdzanie obsługi automatycznego skanowania';
   if(!('BarcodeDetector' in window) || typeof BarcodeDetector!=='function'){
-   msg.textContent='📷 Aparat działa. Automatyczne skanowanie nie jest dostępne — wpisz kod ręcznie.';
+   msg.textContent='📷 Aparat działa. Telefon nie udostępnia automatycznego skanowania. Wpisz kod ręcznie.';
    return;
   }
   let detector=null;
   try{
-   stage='tworzenie czytnika kodów kreskowych';
-   const supported=typeof BarcodeDetector.getSupportedFormats==='function'
-    ? await BarcodeDetector.getSupportedFormats() : [];
+   stage='pobieranie obsługiwanych formatów kodów';
+   const supported=typeof BarcodeDetector.getSupportedFormats==='function' ? await BarcodeDetector.getSupportedFormats() : [];
    const wanted=['ean_13','ean_8','upc_a','upc_e','code_128'];
    const formats=wanted.filter(f=>supported.includes(f));
+   stage='tworzenie czytnika kodów kreskowych';
    detector=formats.length ? new BarcodeDetector({formats}) : new BarcodeDetector();
-  }catch(detectorError){detector=null;}
-  if(!detector){
-   msg.textContent='📷 Aparat działa. Automatyczne skanowanie nie jest dostępne na tym telefonie — wpisz kod ręcznie.';
+  }catch(e){
+   msg.textContent='📷 Aparat działa, ale czytnik kodów nie startuje. Etap: '+stage+'. '+(e?.name||'Błąd')+': '+(e?.message||String(e))+'. Wpisz kod ręcznie.';
    return;
   }
   const loop=async()=>{
    if(!scanStream)return;
    try{
+    stage='odczyt kodu z obrazu (detect)';
     const codes=await detector.detect(video);
     if(codes.length){$('scanCode').value=codes[0].rawValue||'';stopScan();await lookupBarcode();return;}
-   }catch(e){}
+   }catch(e){
+    msg.textContent='Aparat działa, ale skanowanie napotkało błąd. Etap: '+stage+'. '+(e?.name||'Błąd')+': '+(e?.message||String(e))+'. Możesz wpisać kod ręcznie.';
+    return;
+   }
    scanTimer=setTimeout(loop,400);
   };
-  stage='odczyt kodu z obrazu';
   loop();
  }catch(e){
+  const detail=(e?.name||'UnknownError')+': '+(e?.message||String(e));
+  msg.textContent='Nie udało się uruchomić aparatu. Etap: '+stage+'. Szczegóły: '+detail;
+  alert(msg.textContent);
   stopScan();
-  const n=e?.name||'UnknownError';
-  const detail=e?.message||String(e);
-  msg.textContent='Błąd skanera na etapie: '+stage+'. '+n+': '+detail;
-  alert('Nie udało się uruchomić aparatu.\nEtap: '+stage+'\nBłąd: '+n+'\nSzczegóły: '+detail);
  }
 }
 function stopScan(){if(scanTimer)clearTimeout(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}if($('scanner'))$('scanner').srcObject=null;if($('scanArea'))$('scanArea').classList.add('hide')}

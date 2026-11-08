@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moja-kolekcja-v11-plus-diagnostyka';
+const CACHE_NAME = 'moja-kolekcja-v11';
 const APP_ASSETS = [
   './',
   './index.html',

@@ -1,2 +1,1 @@
-Moja Kolekcja – wersja 11
-Zmiany: formularz dodawania CD/kaset/książek ukryty pod przyciskiem +; dokładniejszy komunikat diagnostyczny skanera. Sortowanie i zapis danych pozostają bez zmian.
+Moja Kolekcja PWA v3. Usunięto Regał/Lokalizacja. Automatyczna migracja danych ze starych wersji zapisanych w tej samej przeglądarce. PWA wymaga HTTPS do instalacji jako aplikacja.
