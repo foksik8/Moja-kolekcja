@@ -70,7 +70,7 @@ input,select,textarea{width:100%;padding:11px;margin:5px 0 10px;border:1px solid
     <button class="secondary" onclick="lookupBarcode()">🔎 Szukaj po kodzie</button>
     <p id="scanMsg" class="muted"></p>
     <div id="scanArea" class="hide scanbox">
-      <video id="scanner" playsinline></video>
+      <video id="scannerVideo" playsinline></video>
       <button type="button" onclick="stopScan()">✕ Zamknij skaner</button>
     </div>
   </div>
@@ -138,8 +138,7 @@ function renderMenu(){
 }
 function itemForm(type){
  currentType=type;
- return `<button type="button" class="add-toggle" onclick="toggleItemForm()">＋ Dodaj pozycję</button>
- <div id="itemFormPanel" class="panel hide">
+ return `<div class="panel">
  <h3>➕ Dodaj ${esc(type)}</h3>
  <form onsubmit="addItem(event,'${type}')">
  <div class="grid">
@@ -153,14 +152,7 @@ function itemForm(type){
  </div>
  <label>Notatka<textarea id="nnotes"></textarea></label>
  <button>💾 Zapisz</button>
- <button type="button" class="mutedbtn" onclick="toggleItemForm(false)">Anuluj</button>
  </form></div>`;
-}
-function toggleItemForm(force){
- const panel=$('itemFormPanel'); if(!panel)return;
- const shouldShow=typeof force==='boolean'?force:panel.classList.contains('hide');
- panel.classList.toggle('hide',!shouldShow);
- if(shouldShow){const field=$('ntitle');if(field)field.focus();}
 }
 function renderCollectionSection(id){
  const type=id==='cds'?'CD':id==='tapes'?'Kaseta':'Książka';
@@ -241,65 +233,71 @@ function renderGlobal(){
  $('globalList').innerHTML=arr.map(itemHTML).join('')||'<p>Brak wyników.</p>';
 }
 async function startScan(){
- const video=$('scanner'), msg=$('scanMsg');
- let stage='sprawdzanie dostępu do aparatu';
+ const video=$('scannerVideo'), msg=$('scanMsg');
  if(!navigator.mediaDevices?.getUserMedia){
-  msg.textContent='BŁĄD na etapie: '+stage+'. Ta strona nie udostępnia getUserMedia. Otwórz aplikację przez HTTPS.';
-  alert(msg.textContent); return;
+  alert('Chrome nie udostępnia aparatu tej stronie. Otwórz aplikację przez HTTPS.');
+  return;
  }
  try{
-  stage='uruchamianie tylnego aparatu (getUserMedia)';
   try{
    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-  }catch(firstError){
-   stage='uruchamianie dowolnego aparatu (wariant zapasowy)';
+  }catch(e){
    scanStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
   }
-  stage='przygotowanie elementu wideo';
   $('scanArea').classList.remove('hide');
-  video.muted=true; video.playsInline=true; video.srcObject=scanStream;
-  stage='odtwarzanie obrazu z aparatu (video.play)';
+  video.muted=true;
+  video.playsInline=true;
+  video.srcObject=scanStream;
   await video.play();
   msg.textContent='📷 Aparat działa. Skieruj go na kod kreskowy…';
 
-  stage='sprawdzanie obsługi automatycznego skanowania';
+  // Nie zatrzymujemy aparatu, jeśli BarcodeDetector jest dostępny w Chrome,
+  // ale jego konstruktor nie obsługuje danego urządzenia.
   if(!('BarcodeDetector' in window) || typeof BarcodeDetector!=='function'){
-   msg.textContent='📷 Aparat działa. Telefon nie udostępnia automatycznego skanowania. Wpisz kod ręcznie.';
+   msg.textContent='📷 Aparat działa. Automatyczne skanowanie nie jest dostępne — wpisz kod ręcznie.';
    return;
   }
+
   let detector=null;
   try{
-   stage='pobieranie obsługiwanych formatów kodów';
-   const supported=typeof BarcodeDetector.getSupportedFormats==='function' ? await BarcodeDetector.getSupportedFormats() : [];
+   const supported=typeof BarcodeDetector.getSupportedFormats==='function'
+    ? await BarcodeDetector.getSupportedFormats() : [];
    const wanted=['ean_13','ean_8','upc_a','upc_e','code_128'];
    const formats=wanted.filter(f=>supported.includes(f));
-   stage='tworzenie czytnika kodów kreskowych';
    detector=formats.length ? new BarcodeDetector({formats}) : new BarcodeDetector();
   }catch(e){
-   msg.textContent='📷 Aparat działa, ale czytnik kodów nie startuje. Etap: '+stage+'. '+(e?.name||'Błąd')+': '+(e?.message||String(e))+'. Wpisz kod ręcznie.';
+   detector=null;
+  }
+
+  if(!detector){
+   msg.textContent='📷 Aparat działa. Automatyczne skanowanie nie jest dostępne na tym telefonie — wpisz kod ręcznie.';
    return;
   }
+
   const loop=async()=>{
    if(!scanStream)return;
    try{
-    stage='odczyt kodu z obrazu (detect)';
     const codes=await detector.detect(video);
-    if(codes.length){$('scanCode').value=codes[0].rawValue||'';stopScan();await lookupBarcode();return;}
-   }catch(e){
-    msg.textContent='Aparat działa, ale skanowanie napotkało błąd. Etap: '+stage+'. '+(e?.name||'Błąd')+': '+(e?.message||String(e))+'. Możesz wpisać kod ręcznie.';
-    return;
-   }
+    if(codes.length){
+     $('scanCode').value=codes[0].rawValue||'';
+     stopScan();
+     await lookupBarcode();
+     return;
+    }
+   }catch(e){}
    scanTimer=setTimeout(loop,400);
   };
   loop();
  }catch(e){
-  const detail=(e?.name||'UnknownError')+': '+(e?.message||String(e));
-  msg.textContent='Nie udało się uruchomić aparatu. Etap: '+stage+'. Szczegóły: '+detail;
-  alert(msg.textContent);
   stopScan();
+  const n=e?.name||'UnknownError';
+  if(n==='NotAllowedError') alert('Android/Chrome odrzucił dostęp do aparatu. Sprawdź uprawnienie strony i globalny „Dostęp do aparatu”.');
+  else if(n==='NotFoundError') alert('Nie znaleziono aparatu w telefonie.');
+  else if(n==='NotReadableError'||n==='TrackStartError') alert('Aparat jest obecnie zajęty. Zamknij aplikację Aparat i inne aplikacje używające kamery.');
+  else alert('Nie udało się uruchomić aparatu. Kod błędu: '+n);
  }
 }
-function stopScan(){if(scanTimer)clearTimeout(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}if($('scanner'))$('scanner').srcObject=null;if($('scanArea'))$('scanArea').classList.add('hide')}
+function stopScan(){if(scanTimer)clearTimeout(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}if($('scannerVideo'))$('scannerVideo').srcObject=null;if($('scanArea'))$('scanArea').classList.add('hide')}
 async function lookupBarcode(){
  const code=($('scanCode').value||'').replace(/[^0-9Xx]/g,'');if(!code)return;
  $('scanMsg').textContent='🔎 Szukam informacji dla kodu '+code+'…';
