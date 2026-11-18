@@ -32,6 +32,7 @@ input,select,textarea{width:100%;padding:11px;margin:5px 0 10px;border:1px solid
 .apiresult{background:#fff;border-radius:12px;padding:10px;margin:8px 0}
 .count{font-size:13px;color:#666}
 @media(max-width:600px){.grid{grid-template-columns:1fr}.item{display:block}.item>div:last-child{margin-top:8px}.menu button{min-height:90px}}
+.panel{scroll-margin-top:12px;}
 </style>
 </head>
 <body>
@@ -199,9 +200,9 @@ function itemHTML(x){
 }
 let editingId=null;
 function toggleAddForm(id){const panel=$('addPanel');panel.classList.toggle('hide');if(!panel.classList.contains('hide')){editingId=null;resetItemForm();}}
-function resetItemForm(){const form=$('addPanel')?.querySelector('form');if(form)form.reset();$('coverPreview').innerHTML='';$('saveItemBtn').textContent='💾 Zapisz';}
+function resetItemForm(){const form=$('addPanel')?.querySelector('form');if(form)form.reset();$('coverPreview').innerHTML='';$('saveItemBtn').textContent='💾 Zapisz';const heading=$('addPanel')?.querySelector('h3');if(heading)heading.textContent='➕ Dodaj '+currentType;}
 function cancelEdit(){editingId=null;resetItemForm();$('addPanel').classList.add('hide');}
-function editItem(id){const x=d.find(a=>a.id==id);if(!x)return;editingId=id;$('addPanel').classList.remove('hide');$('ntitle').value=x.title||'';$('ncreator').value=x.creator||'';$('nyear').value=x.year||'';$('npub').value=x.publisher||'';$('ngenre').value=x.genre||'';$('ncondition').value=x.condition||'Bardzo dobry';$('nbarcode').value=x.barcode||'';$('nnotes').value=x.notes||'';$('saveItemBtn').textContent='💾 Zapisz zmiany';$('coverPreview').innerHTML=x.cover?`<img class="cover" src="${esc(x.cover)}"><button type="button" class="secondary" onclick="removeCover()">Usuń okładkę</button>`:'';}
+function editItem(id){const x=d.find(a=>a.id==id);if(!x)return;editingId=id;$('addPanel').classList.remove('hide');const heading=$('addPanel').querySelector('h3');if(heading)heading.textContent='✏️ Edytuj pozycję';$('ntitle').value=x.title||'';$('ncreator').value=x.creator||'';$('nyear').value=x.year||'';$('npub').value=x.publisher||'';$('ngenre').value=x.genre||'';$('ncondition').value=x.condition||'Bardzo dobry';$('nbarcode').value=x.barcode||'';$('nnotes').value=x.notes||'';$('saveItemBtn').textContent='💾 Zapisz zmiany';$('coverPreview').innerHTML=x.cover?`<img class="cover" src="${esc(x.cover)}"><button type="button" class="secondary" onclick="removeCover()">Usuń okładkę</button>`:'';requestAnimationFrame(()=> $('addPanel').scrollIntoView({behavior:'smooth',block:'start'}));}
 function removeCover(){if(editingId){const x=d.find(a=>a.id==editingId);if(x)x.cover='';}$('coverPreview').innerHTML='';}
 async function readCover(file){if(!file)return '';return new Promise(resolve=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=700,scale=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',0.78));};img.onerror=()=>resolve(String(r.result||''));img.src=r.result;};r.onerror=()=>resolve('');r.readAsDataURL(file);});}
 async function addItem(e,type){
