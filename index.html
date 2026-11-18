@@ -12,7 +12,7 @@
 body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:radial-gradient(ellipse at 50% 0%,#263329 0%,#111914 34%,var(--bg) 78%);background-attachment:fixed;color:var(--text);min-height:100vh}
 header{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(4,8,6,.78),rgba(10,15,11,.96)),radial-gradient(ellipse at 50% 10%,#52604e 0%,#202b22 38%,#090d0b 82%);border-bottom:1px solid #465447;padding:24px 16px 22px;box-shadow:0 8px 28px #0009}
 header:before{content:"";position:absolute;inset:0;opacity:.3;background:repeating-linear-gradient(82deg,transparent 0 28px,#82908022 29px 30px,transparent 31px 55px),linear-gradient(0deg,#050806 0%,transparent 68%);pointer-events:none}
-header main{position:relative;z-index:1}header h1{font-family:Georgia,serif;font-size:clamp(25px,7vw,36px);letter-spacing:2px;text-transform:uppercase;color:#d9ded8;text-shadow:0 2px 12px #000;margin:0 0 7px}header main div{color:#aab5aa;letter-spacing:1.5px;text-transform:uppercase;font-size:11px}
+header main{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px}header .brand-logo{display:block;width:min(100%,760px);height:auto;max-height:230px;object-fit:contain;filter:drop-shadow(0 4px 12px #000)}header main div{color:#aab5aa;letter-spacing:1.5px;text-transform:uppercase;font-size:11px;text-align:center}
 main{max-width:900px;margin:auto;padding:14px}
 h1,h2{margin-top:0}h2{font-family:Georgia,serif;letter-spacing:1px;color:#d7ded7;text-transform:uppercase;font-size:21px}
 h3{color:#d8ded8;font-family:Georgia,serif;letter-spacing:.5px}
@@ -37,7 +37,7 @@ label{color:#c4cdc5;font-size:14px}.grid{display:grid;grid-template-columns:1fr 
 </style>
 </head>
 <body>
-<header><main><h1>☠ Moja Kolekcja</h1><div>Muzyka • literatura • mroczny las</div></main></header>
+<header><main><img class="brand-logo" src="logo-metal.png" alt="Moja Kolekcja – leśny logotyp metalowy"><div>Muzyka • literatura • mroczny las</div></main></header>
 <main>
 
 <section id="home">

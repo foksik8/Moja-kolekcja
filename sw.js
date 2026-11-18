@@ -1,10 +1,11 @@
-const CACHE_NAME = 'moja-kolekcja-v15';
+const CACHE_NAME = 'moja-kolekcja-v16';
 const APP_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './logo-metal.png'
 ];
 
 self.addEventListener('install', event => {
