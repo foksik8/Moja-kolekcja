@@ -8,35 +8,36 @@
 <title>Moja Kolekcja</title>
 <style>
 *{box-sizing:border-box}
-body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:#f3f3f3;color:#222}
-header{background:#222;color:#fff;padding:16px}
+:root{color-scheme:dark;--bg:#090d0b;--panel:#151b17;--panel2:#1c241e;--line:#344238;--text:#e5e8e3;--muted:#9ba69d;--red:#8e252b;--red2:#b13b3d;--green:#435b47;--silver:#b9c2bb}
+body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:radial-gradient(ellipse at 50% 0%,#263329 0%,#111914 34%,var(--bg) 78%);background-attachment:fixed;color:var(--text);min-height:100vh}
+header{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(4,8,6,.78),rgba(10,15,11,.96)),radial-gradient(ellipse at 50% 10%,#52604e 0%,#202b22 38%,#090d0b 82%);border-bottom:1px solid #465447;padding:24px 16px 22px;box-shadow:0 8px 28px #0009}
+header:before{content:"";position:absolute;inset:0;opacity:.3;background:repeating-linear-gradient(82deg,transparent 0 28px,#82908022 29px 30px,transparent 31px 55px),linear-gradient(0deg,#050806 0%,transparent 68%);pointer-events:none}
+header main{position:relative;z-index:1}header h1{font-family:Georgia,serif;font-size:clamp(25px,7vw,36px);letter-spacing:2px;text-transform:uppercase;color:#d9ded8;text-shadow:0 2px 12px #000;margin:0 0 7px}header main div{color:#aab5aa;letter-spacing:1.5px;text-transform:uppercase;font-size:11px}
 main{max-width:900px;margin:auto;padding:14px}
-h1,h2{margin-top:0}
-button{padding:11px 14px;border:0;border-radius:10px;background:#222;color:#fff;margin:3px;cursor:pointer}
-button.secondary{background:#666}.danger{background:#a22}.buy{background:#375d2b}
-input,select,textarea{width:100%;padding:11px;margin:5px 0 10px;border:1px solid #ccc;border-radius:9px;font:inherit}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+h1,h2{margin-top:0}h2{font-family:Georgia,serif;letter-spacing:1px;color:#d7ded7;text-transform:uppercase;font-size:21px}
+h3{color:#d8ded8;font-family:Georgia,serif;letter-spacing:.5px}
+button{padding:11px 14px;border:1px solid #4b5a4e;border-radius:7px;background:linear-gradient(180deg,#344238,#202a23);color:#f0f2ed;margin:3px;cursor:pointer;font:inherit;font-weight:600;box-shadow:inset 0 1px #ffffff12,0 2px 5px #0006}
+button:active{transform:translateY(1px)}button.secondary{background:#303833;border-color:#59635b}.danger{background:linear-gradient(180deg,#9a3438,#5d191e);border-color:#a64a4d}.buy{background:linear-gradient(180deg,#52694c,#2d422f);border-color:#637c60}
+input,select,textarea{width:100%;padding:11px;margin:5px 0 10px;border:1px solid #465349;border-radius:7px;background:#0d130f;color:var(--text);font:inherit;accent-color:#9b3338}input::placeholder,textarea::placeholder{color:#778279}
+label{color:#c4cdc5;font-size:14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .menu{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.menu button{min-height:100px;background:#fff;color:#222;border:1px solid #ddd;font-size:16px;text-align:left}
-.menu button b{display:block;font-size:30px;margin-bottom:6px}
-.menu button small{color:#666}
-.card,form,.item,.panel{background:#fff;padding:14px;border-radius:12px;margin:10px 0}
-.item{display:flex;justify-content:space-between;gap:10px;align-items:center}
-.row{display:flex;align-items:center;min-width:0}.cover{width:82px;height:100px;object-fit:cover;border-radius:8px;margin-right:10px;flex-shrink:0}.itemtext{min-width:0;overflow-wrap:anywhere}.itemactions{display:flex;flex-wrap:wrap;gap:4px}
-.muted{color:#666;font-size:13px}.hide{display:none!important}
-.topbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.topbar button{margin:0}
-.section-title{display:flex;justify-content:space-between;align-items:center}
-.scanbox{background:#111;color:#fff;padding:12px;border-radius:12px;margin:10px 0}
-.scanbox video{width:100%;border-radius:10px;max-height:300px;object-fit:cover}
-.apiresult{background:#fff;border-radius:12px;padding:10px;margin:8px 0}
-.count{font-size:13px;color:#666}
-@media(max-width:600px){.grid{grid-template-columns:1fr}.item{display:block}.item>div:last-child{margin-top:8px}.menu button{min-height:90px}}
-.panel{scroll-margin-top:12px;}
+.menu button{position:relative;overflow:hidden;min-height:112px;background:linear-gradient(145deg,#202a23,#101612 72%);color:#e2e8e1;border:1px solid #465548;border-left:3px solid #7d292e;font-size:16px;text-align:left;padding:14px;border-radius:8px;box-shadow:inset 0 1px #ffffff0a,0 5px 12px #0007}
+.menu button:after{content:"";position:absolute;width:90px;height:130px;right:-24px;bottom:-65px;border-left:1px solid #77877935;border-right:1px solid #77877925;transform:rotate(34deg);pointer-events:none}
+.menu button b{display:block;font-size:29px;margin-bottom:7px;filter:grayscale(.65)}.menu button small{display:block;color:#9eaaa0;font-size:12px;margin-top:4px}
+#home>h2{margin:8px 2px 14px;padding-left:10px;border-left:3px solid #8e3035}
+.card,form,.item,.panel{background:linear-gradient(145deg,#1a221c,#111713);border:1px solid #344137;padding:14px;border-radius:9px;margin:10px 0;box-shadow:0 5px 16px #0005}
+.item{display:flex;justify-content:space-between;gap:10px;align-items:center;border-left:3px solid #596b59}
+.row{display:flex;align-items:center;min-width:0}.cover{width:82px;height:100px;object-fit:cover;border-radius:5px;margin-right:10px;flex-shrink:0;border:1px solid #59645b;box-shadow:0 3px 9px #0008}.itemtext{min-width:0;overflow-wrap:anywhere}.itemtext b{color:#e4e8e2}.itemactions{display:flex;flex-wrap:wrap;gap:4px}
+.muted{color:var(--muted);font-size:13px}.hide{display:none!important}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}.topbar button{margin:0}.section-title{display:flex;justify-content:space-between;align-items:center}
+.scanbox{background:#080c09;color:#fff;padding:12px;border:1px solid #475449;border-radius:9px;margin:10px 0}.scanbox video{width:100%;border-radius:7px;max-height:300px;object-fit:cover}
+.apiresult{background:#172019;border:1px solid #3a4a3d;border-radius:9px;padding:10px;margin:8px 0}.count{font-size:13px;color:#9ba69d}
+.panel{scroll-margin-top:12px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.item{display:block}.item>div:last-child{margin-top:8px}.menu button{min-height:100px}}
 </style>
 </head>
 <body>
-<header><main><h1>🎵📚 Moja Kolekcja</h1><div>Twoja kolekcja CD, kaset i książek</div></main></header>
+<header><main><h1>☠ Moja Kolekcja</h1><div>Muzyka • literatura • mroczny las</div></main></header>
 <main>
 
 <section id="home">
