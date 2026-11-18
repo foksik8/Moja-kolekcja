@@ -22,7 +22,7 @@ input,select,textarea{width:100%;padding:11px;margin:5px 0 10px;border:1px solid
 .menu button small{color:#666}
 .card,form,.item,.panel{background:#fff;padding:14px;border-radius:12px;margin:10px 0}
 .item{display:flex;justify-content:space-between;gap:10px;align-items:center}
-.row{display:flex;align-items:center;min-width:0}.cover{width:70px;height:70px;object-fit:cover;border-radius:8px;margin-right:10px}
+.row{display:flex;align-items:center;min-width:0}.cover{width:82px;height:100px;object-fit:cover;border-radius:8px;margin-right:10px;flex-shrink:0}.itemtext{min-width:0;overflow-wrap:anywhere}.itemactions{display:flex;flex-wrap:wrap;gap:4px}
 .muted{color:#666;font-size:13px}.hide{display:none!important}
 .topbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .topbar button{margin:0}
@@ -151,7 +151,8 @@ function itemForm(type){
  <label>Kod kreskowy / ISBN<input id="nbarcode" inputmode="numeric"></label>
  </div>
  <label>Notatka<textarea id="nnotes"></textarea></label>
- <button>💾 Zapisz</button>
+ <label>Okładka – wybierz zdjęcie z telefonu<input id="ncover" type="file" accept="image/*"></label><div id="coverPreview"></div>
+ <button id="saveItemBtn">💾 Zapisz</button><button type="button" class="secondary" onclick="cancelEdit()">Anuluj</button>
  </form></div>`;
 }
 function renderCollectionSection(id){
@@ -159,7 +160,7 @@ function renderCollectionSection(id){
  const sec=$(id);
  const items=d.filter(x=>x.type===type);
  sec.innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>${type==='CD'?'💿':type==='Kaseta'?'📼':'📚'} ${type}</h2></div>
- ${itemForm(type)}
+ <button onclick="toggleAddForm('${id}')">＋ Dodaj pozycję</button><div id="addPanel" class="hide">${itemForm(type)}</div>
  <input id="sectionQ" placeholder="🔎 Szukaj w ${type}..." oninput="renderSectionList('${id}')">
  <div id="sectionList"></div>`;
  renderSectionList(id);
@@ -187,19 +188,26 @@ function sortCollection(items,type){
 function renderSectionList(id){
  const type=id==='cds'?'CD':id==='tapes'?'Kaseta':'Książka';
  const q=(($('sectionQ')||{}).value||'').toLowerCase();
- const found=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode).toLowerCase().includes(q));
+ const found=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.notes).toLowerCase().includes(q));
  const arr=sortCollection(found,type);
  $('sectionList').innerHTML=arr.map(x=>itemHTML(x)).join('')||'<p>Brak pozycji.</p>';
 }
 function itemHTML(x){
  const main=esc(x.creator||'Brak autora/wykonawcy');
  const title=esc(x.title||'Bez tytułu');
- return `<div class="item"><div class="row">${x.cover?`<img class="cover" src="${esc(x.cover)}" loading="lazy" onerror="this.style.display='none'">`:''}<div><b>${main}</b><br><span class="muted">${title}</span><br>${esc(x.type)} ${x.year?'• '+esc(x.year):''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}</div></div><button class="danger" onclick="del(${x.id})">Usuń</button></div>`;
+ return `<div class="item"><div class="row">${x.cover?`<img class="cover" src="${esc(x.cover)}" loading="lazy" onerror="this.style.display='none'">`:''}<div class="itemtext"><b>${main}</b><br><span class="muted">${title}</span><br>${esc(x.type)} ${x.year?'• '+esc(x.year):''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}${x.notes?`<br><small>📝 ${esc(x.notes)}</small>`:''}</div></div><div class="itemactions"><button onclick="editItem(${x.id})">✏️ Edytuj</button><button class="danger" onclick="del(${x.id})">Usuń</button></div></div>`;
 }
-function addItem(e,type){
- e.preventDefault();
- d.push(clean({type,title:$('ntitle').value,creator:$('ncreator').value,year:$('nyear').value,publisher:$('npub').value,genre:$('ngenre').value,condition:$('ncondition').value,notes:$('nnotes').value,barcode:$('nbarcode').value}));
- save(); renderCollectionSection(type==='CD'?'cds':type==='Kaseta'?'tapes':'books');
+let editingId=null;
+function toggleAddForm(id){const panel=$('addPanel');panel.classList.toggle('hide');if(!panel.classList.contains('hide')){editingId=null;resetItemForm();}}
+function resetItemForm(){const form=$('addPanel')?.querySelector('form');if(form)form.reset();$('coverPreview').innerHTML='';$('saveItemBtn').textContent='💾 Zapisz';}
+function cancelEdit(){editingId=null;resetItemForm();$('addPanel').classList.add('hide');}
+function editItem(id){const x=d.find(a=>a.id==id);if(!x)return;editingId=id;$('addPanel').classList.remove('hide');$('ntitle').value=x.title||'';$('ncreator').value=x.creator||'';$('nyear').value=x.year||'';$('npub').value=x.publisher||'';$('ngenre').value=x.genre||'';$('ncondition').value=x.condition||'Bardzo dobry';$('nbarcode').value=x.barcode||'';$('nnotes').value=x.notes||'';$('saveItemBtn').textContent='💾 Zapisz zmiany';$('coverPreview').innerHTML=x.cover?`<img class="cover" src="${esc(x.cover)}"><button type="button" class="secondary" onclick="removeCover()">Usuń okładkę</button>`:'';}
+function removeCover(){if(editingId){const x=d.find(a=>a.id==editingId);if(x)x.cover='';}$('coverPreview').innerHTML='';}
+async function readCover(file){if(!file)return '';return new Promise(resolve=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=700,scale=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',0.78));};img.onerror=()=>resolve(String(r.result||''));img.src=r.result;};r.onerror=()=>resolve('');r.readAsDataURL(file);});}
+async function addItem(e,type){
+ e.preventDefault();const old=editingId?d.find(x=>x.id==editingId):null;let cover=old?.cover||'';const file=$('ncover').files[0];if(file)cover=await readCover(file);
+ const obj=clean({id:old?.id,type,title:$('ntitle').value,creator:$('ncreator').value,year:$('nyear').value,publisher:$('npub').value,genre:$('ngenre').value,condition:$('ncondition').value,notes:$('nnotes').value,barcode:$('nbarcode').value,cover});
+ if(editingId)d=d.map(x=>x.id==editingId?obj:x);else d.push(obj);save();renderCollectionSection(type==='CD'?'cds':type==='Kaseta'?'tapes':'books');
 }
 function del(id){d=d.filter(x=>x.id!=id);save(); if(!$('home').classList.contains('hide'))return; const sec=d.find(x=>x.id==id); renderMenu()}
 function renderWanted(){
@@ -224,7 +232,7 @@ function searchWanted(id){const x=w.find(a=>a.id==id);location.href='https://www
 function buy(id){const x=w.find(a=>a.id==id);d.push(clean(x));w=w.filter(x=>x.id!=id);save();renderWanted()}
 function renderGlobal(){
  const q=(($('globalQ')||{}).value||'').toLowerCase();
- const found=d.filter(x=>(x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.type).toLowerCase().includes(q));
+ const found=d.filter(x=>(x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.notes+' '+x.type).toLowerCase().includes(q));
  const arr=[
   ...sortCollection(found.filter(x=>x.type==='CD'),'CD'),
   ...sortCollection(found.filter(x=>x.type==='Kaseta'),'Kaseta'),
