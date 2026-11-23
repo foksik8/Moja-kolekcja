@@ -33,6 +33,7 @@ label{color:#c4cdc5;font-size:14px}.grid{display:grid;grid-template-columns:1fr 
 .scanbox{background:#080c09;color:#fff;padding:12px;border:1px solid #475449;border-radius:9px;margin:10px 0}.scanbox video{width:100%;border-radius:7px;max-height:300px;object-fit:cover}
 .apiresult{background:#172019;border:1px solid #3a4a3d;border-radius:9px;padding:10px;margin:8px 0}.count{font-size:13px;color:#9ba69d}
 .panel{scroll-margin-top:12px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{background:#151d17;border:1px solid #465448;border-left:3px solid #8e3035;border-radius:8px;padding:13px}.stat strong{display:block;font-size:25px;color:#f0f2ed}.stat small{color:#aab5aa}.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.toolbar label{flex:1 1 140px}.toolbar select{margin-bottom:4px}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:10px}.gallery .item{display:block;padding:10px;min-width:0}.gallery .row{display:block}.gallery .cover{display:block;width:100%;height:175px;margin:0 0 9px}.gallery .itemactions button{font-size:12px;padding:8px}.gallery .itemtext{font-size:13px}.gallery .itemtext small{font-size:12px}
 @media(max-width:600px){.grid{grid-template-columns:1fr}.item{display:block}.item>div:last-child{margin-top:8px}.menu button{min-height:100px}}
 </style>
 </head>
@@ -50,9 +51,11 @@ label{color:#c4cdc5;font-size:14px}.grid{display:grid;grid-template-columns:1fr 
     <button onclick="openSection('scanner')"><b>📷</b>Skaner <small>kod kreskowy / ISBN</small></button>
     <button onclick="openSection('search')"><b>🔎</b>Wyszukiwanie <small>cała kolekcja</small></button>
     <button onclick="openSection('backup')"><b>💾</b>Kopia zapasowa <small>eksport / import</small></button>
+    <button onclick="openSection('stats')"><b>📊</b>Statystyki <small>podsumowanie kolekcji</small></button>
   </div>
 </section>
 
+<section id="stats" class="hide"></section>
 <section id="cds" class="hide"></section>
 <section id="tapes" class="hide"></section>
 <section id="books" class="hide"></section>
@@ -129,6 +132,7 @@ function openSection(id){
  document.querySelectorAll('main>section').forEach(s=>s.classList.add('hide'));
  $(id).classList.remove('hide');
  if(['cds','tapes','books'].includes(id)) renderCollectionSection(id);
+ if(id==='stats') renderStats();
  if(id==='wanted') renderWanted();
  if(id==='search') renderGlobal();
 }
@@ -137,6 +141,14 @@ function renderMenu(){
  $('mka').textContent=d.filter(x=>x.type==='Kaseta').length+' pozycji';
  $('mks').textContent=d.filter(x=>x.type==='Książka').length+' pozycji';
  $('mw').textContent=w.length+' pozycji';
+}
+function renderStats(){
+ const cd=d.filter(x=>x.type==='CD').length,ka=d.filter(x=>x.type==='Kaseta').length,ks=d.filter(x=>x.type==='Książka').length;
+ const covers=d.filter(x=>Boolean(x.cover)).length;
+ const years=d.map(x=>parseInt(x.year,10)).filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b);
+ $('stats').innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>📊 Statystyki</h2></div><div class="stats">
+ <div class="stat"><strong>${d.length}</strong><small>Wszystkie pozycje</small></div><div class="stat"><strong>${cd}</strong><small>Płyty CD</small></div><div class="stat"><strong>${ka}</strong><small>Kasety</small></div><div class="stat"><strong>${ks}</strong><small>Książki</small></div><div class="stat"><strong>${covers}</strong><small>Pozycje z okładką</small></div><div class="stat"><strong>${w.length}</strong><small>Do kupienia</small></div></div>
+ <div class="panel"><h3>📅 Lata wydań</h3>${years.length?'Najstarszy: '+years[0]+' • Najnowszy: '+years[years.length-1]:'Brak podanych lat wydania.'}</div>`;
 }
 function itemForm(type){
  currentType=type;
@@ -164,6 +176,10 @@ function renderCollectionSection(id){
  sec.innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>${type==='CD'?'💿':type==='Kaseta'?'📼':'📚'} ${type}</h2></div>
  <button onclick="toggleAddForm('${id}')">＋ Dodaj pozycję</button><div id="addPanel" class="hide">${itemForm(type)}</div>
  <input id="sectionQ" placeholder="🔎 Szukaj w ${type}..." oninput="renderSectionList('${id}')">
+ <div class="toolbar"><label>Gatunek<select id="filterGenre" onchange="renderSectionList('${id}')"><option value="">Wszystkie gatunki</option>${[...new Set(items.map(x=>String(x.genre||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pl')).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}</select></label>
+ <label>Rok<select id="filterYear" onchange="renderSectionList('${id}')"><option value="">Wszystkie lata</option>${[...new Set(items.map(x=>String(x.year||'').trim()).filter(Boolean))].sort((a,b)=>Number(a)-Number(b)).map(y=>`<option value="${esc(y)}">${esc(y)}</option>`).join('')}</select></label>
+ <label>Okładka<select id="filterCover" onchange="renderSectionList('${id}')"><option value="">Wszystkie</option><option value="yes">Ze zdjęciem</option><option value="no">Bez zdjęcia</option></select></label>
+ <label>Widok<select id="viewMode" onchange="renderSectionList('${id}')"><option value="list">Lista</option><option value="gallery">Galeria okładek</option></select></label></div>
  <div id="sectionList"></div>`;
  renderSectionList(id);
 }
@@ -190,8 +206,10 @@ function sortCollection(items,type){
 function renderSectionList(id){
  const type=id==='cds'?'CD':id==='tapes'?'Kaseta':'Książka';
  const q=(($('sectionQ')||{}).value||'').toLowerCase();
- const found=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.notes).toLowerCase().includes(q));
+ const genre=$('filterGenre')?.value||'',year=$('filterYear')?.value||'',cover=$('filterCover')?.value||'';
+ const found=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.notes).toLowerCase().includes(q) && (!genre||x.genre===genre) && (!year||String(x.year)===year) && (!cover||(cover==='yes'?Boolean(x.cover):!x.cover))); 
  const arr=sortCollection(found,type);
+ $('sectionList').classList.toggle('gallery',$('viewMode')?.value==='gallery');
  $('sectionList').innerHTML=arr.map(x=>itemHTML(x)).join('')||'<p>Brak pozycji.</p>';hydrateCovers($('sectionList'));
 }
 function itemHTML(x){
@@ -293,8 +311,9 @@ async function addItem(e,type){
  }catch(err){console.error(err);alert('Nie udało się zapisać zdjęcia lub pozycji. Dane kolekcji pozostały zachowane.');}
  finally{const b=$('saveItemBtn');if(b)b.disabled=false;}
 }
-function del(id){d=d.filter(x=>x.id!=id);save(); if(!$('home').classList.contains('hide'))return; const sec=d.find(x=>x.id==id); renderMenu()}
+function del(id){if(!confirm('Usunąć tę pozycję?'))return;d=d.filter(x=>x.id!=id);save();const section=['cds','tapes','books'].find(id=>!$(id).classList.contains('hide'));if(section)renderCollectionSection(section);else if(!$('search').classList.contains('hide'))renderGlobal();}
 function renderWanted(){
+ wantedEditingId=null;
  $('wanted').innerHTML=`<div class="topbar"><button onclick="goHome()">← Menu</button><h2>🛒 Do kupienia</h2></div>
  <form onsubmit="addWanted(event)"><div class="grid">
  <label>Rodzaj<select id="wt"><option>CD</option><option>Kaseta</option><option>Książka</option></select></label>
@@ -302,15 +321,25 @@ function renderWanted(){
  <label>Rok<input id="wyr" type="number"></label><label>Maks. cena (€)<input id="wp" type="number"></label>
  <label>Priorytet<select id="pr"><option>⭐⭐⭐⭐⭐</option><option>⭐⭐⭐⭐</option><option>⭐⭐⭐</option><option>⭐⭐</option><option>⭐</option></select></label>
  </div><button>🛒 Dodaj</button></form>
+ <div class="toolbar"><label>Filtruj rodzaj<select id="wfilter" onchange="renderWantedList()"><option value="">Wszystkie</option><option>CD</option><option>Kaseta</option><option>Książka</option></select></label><label>Sortowanie<select id="wsort" onchange="renderWantedList()"><option value="priority">Priorytet</option><option value="az">Wykonawca / autor A–Z</option><option value="price">Najniższa cena</option></select></label></div>
  <input id="wq" placeholder="🔎 Szukaj..." oninput="renderWantedList()"><div id="wl"></div>`;
  renderWantedList();
 }
-function addWanted(e){e.preventDefault();w.push({id:Date.now(),type:$('wt').value,title:$('wti').value,creator:$('wcr').value,year:$('wyr').value,price:$('wp').value,prio:$('pr').value});save();renderWanted()}
+function addWanted(e){e.preventDefault();const obj={id:wantedEditingId||Date.now(),type:$('wt').value,title:$('wti').value,creator:$('wcr').value,year:$('wyr').value,price:$('wp').value,prio:$('pr').value};w=wantedEditingId?w.map(x=>x.id==wantedEditingId?obj:x):[...w,obj];wantedEditingId=null;save();renderWanted()}
 function renderWantedList(){
  const q=(($('wq')||{}).value||'').toLowerCase();
- const arr=w.filter(x=>(x.title+' '+x.creator+' '+x.type).toLowerCase().includes(q));
- $('wl').innerHTML=arr.map(x=>`<div class="item"><div><b>${esc(x.creator||'Brak autora/wykonawcy')}</b><br><span class="muted">${esc(x.title||'Bez tytułu')}</span><br>${esc(x.type)} ${x.year?'• '+x.year:''}<br>${x.prio||'⭐⭐⭐'} ${x.price?'• max '+x.price+' €':''}</div><div><button onclick="searchWanted(${x.id})">🔎 Szukaj</button><button class="buy" onclick="buy(${x.id})">✓ Kupione</button><button class="danger" onclick="dw(${x.id})">Usuń</button></div></div>`).join('')||'<p>Lista pusta.</p>';
+ const kind=$('wfilter')?.value||'';
+ const arr=w.filter(x=>(x.title+' '+x.creator+' '+x.type).toLowerCase().includes(q)&&(!kind||x.type===kind)).sort((a,b)=>{const mode=$('wsort')?.value;if(mode==='az')return String(a.creator).localeCompare(String(b.creator),'pl');if(mode==='price')return (Number(a.price)||Infinity)-(Number(b.price)||Infinity);return String(b.prio||'').length-String(a.prio||'').length;});
+ $('wl').innerHTML=arr.map(x=>`<div class="item"><div><b>${esc(x.creator||'Brak autora/wykonawcy')}</b><br><span class="muted">${esc(x.title||'Bez tytułu')}</span><br>${esc(x.type)} ${x.year?'• '+x.year:''}<br>${x.prio||'⭐⭐⭐'} ${x.price?'• max '+x.price+' €':''}</div><div><button onclick="searchWanted(${x.id})">🔎 Szukaj</button><button onclick="editWanted(${x.id})">✏️ Edytuj</button><button class="buy" onclick="buy(${x.id})">✓ Kupione</button><button class="danger" onclick="dw(${x.id})">Usuń</button></div></div>`).join('')||'<p>Lista pusta.</p>';
 }
+function editWanted(id){
+ const x=w.find(a=>a.id==id);if(!x)return;
+ $('wt').value=x.type;$('wti').value=x.title;$('wcr').value=x.creator;$('wyr').value=x.year;$('wp').value=x.price;$('pr').value=x.prio;
+ wantedEditingId=id;
+ const form=$('wt').closest('form');form.scrollIntoView({behavior:'smooth',block:'start'});
+ form.querySelector('button').textContent='💾 Zapisz zmiany';
+}
+let wantedEditingId=null;
 function dw(id){w=w.filter(x=>x.id!=id);save();renderWanted()}
 function searchWanted(id){const x=w.find(a=>a.id==id);location.href='https://www.google.com/search?q='+encodeURIComponent([x.title,x.creator,x.year,x.type,'kupić'].filter(Boolean).join(' '))}
 function buy(id){const x=w.find(a=>a.id==id);d.push(clean(x));w=w.filter(x=>x.id!=id);save();renderWanted()}
@@ -435,6 +464,7 @@ $('imp').onchange=async e=>{
  try{
   const o=JSON.parse(await f.text());
   if(!Array.isArray(o.collection))throw new Error('Nieprawidłowy format');
+  if(!confirm('Import zastąpi obecną kolekcję i listę zakupów danymi z pliku. Czy na pewno chcesz kontynuować?'))return;
   const incoming=o.collection.map(clean);
   // Kopiuj zdjęcia przed podmianą wpisów, aby nie utracić danych.
   for(const x of incoming){
