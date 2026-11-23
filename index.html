@@ -192,24 +192,106 @@ function renderSectionList(id){
  const q=(($('sectionQ')||{}).value||'').toLowerCase();
  const found=d.filter(x=>x.type===type && (x.title+' '+x.creator+' '+x.genre+' '+x.barcode+' '+x.notes).toLowerCase().includes(q));
  const arr=sortCollection(found,type);
- $('sectionList').innerHTML=arr.map(x=>itemHTML(x)).join('')||'<p>Brak pozycji.</p>';
+ $('sectionList').innerHTML=arr.map(x=>itemHTML(x)).join('')||'<p>Brak pozycji.</p>';hydrateCovers($('sectionList'));
 }
 function itemHTML(x){
  const main=esc(x.creator||'Brak autora/wykonawcy');
  const title=esc(x.title||'Bez tytułu');
- return `<div class="item"><div class="row">${x.cover?`<img class="cover" src="${esc(x.cover)}" loading="lazy" onerror="this.style.display='none'">`:''}<div class="itemtext"><b>${main}</b><br><span class="muted">${title}</span><br>${esc(x.type)} ${x.year?'• '+esc(x.year):''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}${x.notes?`<br><small>📝 ${esc(x.notes)}</small>`:''}</div></div><div class="itemactions"><button onclick="editItem(${x.id})">✏️ Edytuj</button><button class="danger" onclick="del(${x.id})">Usuń</button></div></div>`;
+ return `<div class="item"><div class="row">${coverHTML(x.cover)}<div class="itemtext"><b>${main}</b><br><span class="muted">${title}</span><br>${esc(x.type)} ${x.year?'• '+esc(x.year):''}<br>${esc(x.genre)} ${x.barcode?'• '+esc(x.barcode):''}${x.notes?`<br><small>📝 ${esc(x.notes)}</small>`:''}</div></div><div class="itemactions"><button onclick="editItem(${x.id})">✏️ Edytuj</button><button class="danger" onclick="del(${x.id})">Usuń</button></div></div>`;
 }
 let editingId=null;
 function toggleAddForm(id){const panel=$('addPanel');panel.classList.toggle('hide');if(!panel.classList.contains('hide')){editingId=null;resetItemForm();}}
 function resetItemForm(){const form=$('addPanel')?.querySelector('form');if(form)form.reset();$('coverPreview').innerHTML='';$('saveItemBtn').textContent='💾 Zapisz';const heading=$('addPanel')?.querySelector('h3');if(heading)heading.textContent='➕ Dodaj '+currentType;}
 function cancelEdit(){editingId=null;resetItemForm();$('addPanel').classList.add('hide');}
-function editItem(id){const x=d.find(a=>a.id==id);if(!x)return;editingId=id;$('addPanel').classList.remove('hide');const heading=$('addPanel').querySelector('h3');if(heading)heading.textContent='✏️ Edytuj pozycję';$('ntitle').value=x.title||'';$('ncreator').value=x.creator||'';$('nyear').value=x.year||'';$('npub').value=x.publisher||'';$('ngenre').value=x.genre||'';$('ncondition').value=x.condition||'Bardzo dobry';$('nbarcode').value=x.barcode||'';$('nnotes').value=x.notes||'';$('saveItemBtn').textContent='💾 Zapisz zmiany';$('coverPreview').innerHTML=x.cover?`<img class="cover" src="${esc(x.cover)}"><button type="button" class="secondary" onclick="removeCover()">Usuń okładkę</button>`:'';requestAnimationFrame(()=> $('addPanel').scrollIntoView({behavior:'smooth',block:'start'}));}
+function editItem(id){const x=d.find(a=>a.id==id);if(!x)return;editingId=id;$('addPanel').classList.remove('hide');const heading=$('addPanel').querySelector('h3');if(heading)heading.textContent='✏️ Edytuj pozycję';$('ntitle').value=x.title||'';$('ncreator').value=x.creator||'';$('nyear').value=x.year||'';$('npub').value=x.publisher||'';$('ngenre').value=x.genre||'';$('ncondition').value=x.condition||'Bardzo dobry';$('nbarcode').value=x.barcode||'';$('nnotes').value=x.notes||'';$('saveItemBtn').textContent='💾 Zapisz zmiany';$('coverPreview').innerHTML=x.cover?`${coverHTML(x.cover)}<button type="button" class="secondary" onclick="removeCover()">Usuń okładkę</button>`:'';hydrateCovers($('coverPreview'));requestAnimationFrame(()=> $('addPanel').scrollIntoView({behavior:'smooth',block:'start'}));}
 function removeCover(){if(editingId){const x=d.find(a=>a.id==editingId);if(x)x.cover='';}$('coverPreview').innerHTML='';}
-async function readCover(file){if(!file)return '';return new Promise(resolve=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=700,scale=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',0.78));};img.onerror=()=>resolve(String(r.result||''));img.src=r.result;};r.onerror=()=>resolve('');r.readAsDataURL(file);});}
+const COVER_DB='moja_kolekcja_okladki_v1';
+let coverDbPromise;
+const coverUrls=new Map();
+function coverHTML(value){
+ if(!value)return '';
+ if(String(value).startsWith('idb:'))return `<img class="cover" data-cover-key="${esc(String(value).slice(4))}" loading="lazy" onerror="this.style.display='none'">`;
+ return `<img class="cover" src="${esc(value)}" loading="lazy" onerror="this.style.display='none'">`;
+}
+function openCoverDB(){
+ if(!coverDbPromise)coverDbPromise=new Promise((resolve,reject)=>{
+  const req=indexedDB.open(COVER_DB,1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('covers'))req.result.createObjectStore('covers');};
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error);
+ });
+ return coverDbPromise;
+}
+async function putCover(key,blob){
+ const db=await openCoverDB();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction('covers','readwrite');tx.objectStore('covers').put(blob,String(key));
+  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+ });
+}
+async function getCover(key){
+ const db=await openCoverDB();
+ return new Promise((resolve,reject)=>{
+  const req=db.transaction('covers','readonly').objectStore('covers').get(String(key));
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ });
+}
+async function hydrateCovers(container){
+ if(!container)return;
+ for(const img of container.querySelectorAll('img[data-cover-key]')){
+  try{
+   const key=img.dataset.coverKey;let url=coverUrls.get(key);
+   if(!url){const blob=await getCover(key);if(!blob)continue;url=URL.createObjectURL(blob);coverUrls.set(key,url);}
+   if(img.isConnected)img.src=url;
+  }catch(e){console.warn('Okładka:',e);}
+ }
+}
+let migrating=false;
+async function migrateCovers(){
+ if(migrating)return;
+ const pending=d.filter(x=>typeof x.cover==='string'&&x.cover.startsWith('data:image/'));
+ if(!pending.length)return;
+ migrating=true;
+ try{
+  const updates=[];
+  for(const x of pending){const blob=await(await fetch(x.cover)).blob();await putCover(x.id,blob);updates.push({id:x.id,original:x.cover});}
+  // Aktualizuj dopiero po udanym zapisie wszystkich obrazów.
+  for(const u of updates){const x=d.find(x=>x.id===u.id);if(x&&x.cover===u.original)x.cover='idb:'+u.id;}
+  save();
+  if(!$('home').classList.contains('hide'))renderMenu();
+  else for(const id of ['cds','tapes','books'])if(!$(id).classList.contains('hide'))renderCollectionSection(id);
+ }catch(err){console.warn('Migracja nie powiodła się',err);}
+ finally{migrating=false;}
+}
+async function readCover(file){
+ return new Promise((resolve,reject)=>{
+  const r=new FileReader();r.onerror=()=>reject(new Error('Nie można odczytać zdjęcia'));
+  r.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('Nie można otworzyć zdjęcia'));
+   img.onload=()=>{const c=document.createElement('canvas'),scale=Math.min(1,700/Math.max(img.width,img.height));
+    c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    c.toBlob(b=>b?resolve(b):reject(new Error('Błąd zdjęcia')),'image/jpeg',0.78);
+   };img.src=r.result;};r.readAsDataURL(file);
+ });
+}
 async function addItem(e,type){
- e.preventDefault();const old=editingId?d.find(x=>x.id==editingId):null;let cover=old?.cover||'';const file=$('ncover').files[0];if(file)cover=await readCover(file);
- const obj=clean({id:old?.id,type,title:$('ntitle').value,creator:$('ncreator').value,year:$('nyear').value,publisher:$('npub').value,genre:$('ngenre').value,condition:$('ncondition').value,notes:$('nnotes').value,barcode:$('nbarcode').value,cover});
- if(editingId)d=d.map(x=>x.id==editingId?obj:x);else d.push(obj);save();renderCollectionSection(type==='CD'?'cds':type==='Kaseta'?'tapes':'books');
+ e.preventDefault();const btn=$('saveItemBtn');btn.disabled=true;
+ try{
+  // Migracja zmniejsza zajętość localStorage przed zapisem nowych pozycji.
+  await migrateCovers();
+  const old=editingId?d.find(x=>x.id==editingId):null;
+  const id=old?.id||Date.now();let cover=old?.cover||'';
+  const file=$('ncover').files[0];
+  if(file){await putCover(id,await readCover(file));cover='idb:'+id;
+   const cached=coverUrls.get(String(id));if(cached){URL.revokeObjectURL(cached);coverUrls.delete(String(id));}
+  }
+  const obj=clean({id,type,title:$('ntitle').value,creator:$('ncreator').value,year:$('nyear').value,publisher:$('npub').value,genre:$('ngenre').value,condition:$('ncondition').value,notes:$('nnotes').value,barcode:$('nbarcode').value,cover});
+  const previous=d;
+  d=editingId?d.map(x=>x.id==editingId?obj:x):[...d,obj];
+  try{save();}catch(err){d=previous;throw err;}
+  renderCollectionSection(type==='CD'?'cds':type==='Kaseta'?'tapes':'books');
+ }catch(err){console.error(err);alert('Nie udało się zapisać zdjęcia lub pozycji. Dane kolekcji pozostały zachowane.');}
+ finally{const b=$('saveItemBtn');if(b)b.disabled=false;}
 }
 function del(id){d=d.filter(x=>x.id!=id);save(); if(!$('home').classList.contains('hide'))return; const sec=d.find(x=>x.id==id); renderMenu()}
 function renderWanted(){
@@ -240,7 +322,7 @@ function renderGlobal(){
   ...sortCollection(found.filter(x=>x.type==='Kaseta'),'Kaseta'),
   ...sortCollection(found.filter(x=>x.type==='Książka'),'Książka')
  ];
- $('globalList').innerHTML=arr.map(itemHTML).join('')||'<p>Brak wyników.</p>';
+ $('globalList').innerHTML=arr.map(itemHTML).join('')||'<p>Brak wyników.</p>';hydrateCovers($('globalList'));
 }
 async function startScan(){
  const video=$('scannerVideo'), msg=$('scanMsg');
@@ -332,10 +414,42 @@ function showScanResult(x){
 function saveScanned(x){
  d.push(clean(x));save();$('scanResult').innerHTML='<div class="panel">✅ Dodano do kolekcji.</div>';
 }
-function exp(){const a=document.createElement('a'),b=new Blob([JSON.stringify({version:7,collection:d,wanted:w},null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='moja_kolekcja_backup.json';a.click()}
-$('imp').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);d=(o.collection||[]).map(clean);w=o.wanted||[];save();alert('Zaimportowano dane.')}catch{alert('Błędny plik kopii zapasowej.')}};r.readAsText(f)}
+async function exp(){
+ try{
+  const collection=[];
+  for(const x of d){const item={...x};
+   if(String(item.cover||'').startsWith('idb:')){
+    const blob=await getCover(String(item.cover).slice(4));
+    if(!blob)throw new Error('Brak zdjęcia: '+item.title);
+    item.cover=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob);});
+   }
+   collection.push(item);
+  }
+  const blob=new Blob([JSON.stringify({version:8,collection,wanted:w},null,2)],{type:'application/json'});
+  const a=document.createElement('a');const url=URL.createObjectURL(blob);
+  a.href=url;a.download='moja_kolekcja_backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+ }catch(err){console.error(err);alert('Nie udało się przygotować pełnej kopii zapasowej.');}
+}
+$('imp').onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{
+  const o=JSON.parse(await f.text());
+  if(!Array.isArray(o.collection))throw new Error('Nieprawidłowy format');
+  const incoming=o.collection.map(clean);
+  // Kopiuj zdjęcia przed podmianą wpisów, aby nie utracić danych.
+  for(const x of incoming){
+   if(typeof x.cover==='string'&&x.cover.startsWith('data:image/')){
+    const blob=await(await fetch(x.cover)).blob();await putCover(x.id,blob);x.cover='idb:'+x.id;
+   }
+  }
+  const previousD=d,previousW=w;
+  d=incoming;w=o.wanted||[];
+  try{save();}catch(err){d=previousD;w=previousW;throw err;}
+  alert('Zaimportowano dane i okładki.');
+ }catch(err){console.error(err);alert('Nie udało się zaimportować kopii. Dotychczasowe dane pozostały zachowane.');}
+};
 $('globalQ').oninput=renderGlobal;
-load();renderMenu();
+load();renderMenu();migrateCovers();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body></html>
