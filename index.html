@@ -186,24 +186,44 @@ function renderCollectionSection(id){
  <div id="sectionList"></div>`;
  renderSectionList(id);
 }
-function authorSurname(name){
- const s=String(name||'').trim();
- if(!s)return '';
- if(s.includes(','))return s.split(',')[0].trim();
- const parts=s.split(/\\s+/).filter(Boolean);
- return parts.length>1?bookAuthorDisplay(s).split(' ')[0]:s;
-}
+// Obsługa zapisów „Imię Nazwisko” i „Nazwisko Imię”, bez zmiany danych.
+const BOOK_FIRST_NAMES=new Set((
+ 'agata alex aleksander aleksandra andrzej anna antoni artur barbara bartosz beata '
+ +'daniel dariusz dawid dean dominika dorota edward elżbieta emilia ernest ewa '
+ +'filip franciszek gabriel grzegorz halina hannah henryk irena izabela jacob jakub '
+ +'jan janina jarosław jerzy joanna jolanta jonathan joseph julia julian justyna '
+ +'kamil karina karol katarzyna kinga krystian krzysztof laura lech lena leszek '
+ +'lidia lucy łukasz maciej magda magdalena małgorzata maria marian mariusz '
+ +'marcin marek martyna mateusz michał michalina mikołaj monika natalia nikola '
+ +'olga oliwia paula paweł patryk piotr przemysław rafał renata robert roman '
+ +'sandra sebastian sergei simon sławomir stanisław stephen steven sylwia '
+ +'tadeusz teresa thomas tomasz urszula waldemar wanda weronika wiktor '
+ +'william wojciech zbigniew zofia zuzana żaneta '
+ +'adam adrian alan albert alfred alicja amelia amy andrea angela anita '
+ +'anne anthony arthur benjamin brian carlos charles christopher claire '
+ +'david diana dominic edgar edith elena elizabeth emily eric erika '
+ +'frank fred george gregory helen henry hugh ian irene jack james jane '
+ +'jennifer john johnny josephine kate kevin kristen linda lisa '
+ +'lucas lucia margaret mark martin mary matthew michael mike '
+ +'nancy neil nicholas nicole oliver oscar patrick paul peter philip '
+ +'rachel richard rick roger ronald rose ruth samuel sarah scott '
+ +'sophie susan timothy victor victoria vincent walter'
+).split(/\s+/));
 function bookAuthorDisplay(value){
  const raw=String(value||'').trim();if(!raw)return 'Brak autora';
- // Nazwiska z przecinkiem są już zapisane w formie „Nazwisko, Imię”.
  if(raw.includes(','))return raw.replace(/^([^,]+),\s*(.+)$/,'$1 $2');
  const p=raw.split(/\s+/);if(p.length<2)return raw;
- // Złożone nazwiska bez wyraźnego rozdzielenia pozostawiamy bez automatycznej zmiany.
+ const first=p[0].toLocaleLowerCase('pl'),last=p[p.length-1].toLocaleLowerCase('pl');
+ const firstIsName=BOOK_FIRST_NAMES.has(first),lastIsName=BOOK_FIRST_NAMES.has(last);
+ // Gdy drugi wyraz jest imieniem, nie odwracamy ponownie nazwiska.
+ if(lastIsName&&!firstIsName)return raw;
+ // W pozostałych przypadkach obsługujemy wcześniejszy zapis imię-nazwisko.
  const particles=['de','del','van','von','der','den','da','di','du','le','la'];
  let idx=p.length-1;
  while(idx>1&&particles.includes(p[idx-1].toLowerCase()))idx--;
  return p.slice(idx).join(' ')+' '+p.slice(0,idx).join(' ');
 }
+function authorSurname(name){return bookAuthorDisplay(name).split(/\s+/)[0]||'';}
 function sortCollection(items,type){
  return items.slice().sort((a,b)=>{
   const ka=type==='Książka'?bookAuthorDisplay(a.creator):String(a.creator||'').trim();
