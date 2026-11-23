@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#222">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json?v=21">
 <title>Moja Kolekcja</title>
 <style>
 *{box-sizing:border-box}
@@ -206,8 +206,8 @@ function bookAuthorDisplay(value){
 }
 function sortCollection(items,type){
  return items.slice().sort((a,b)=>{
-  const ka=type==='Książka'?authorSurname(a.creator):String(a.creator||'').trim();
-  const kb=type==='Książka'?authorSurname(b.creator):String(b.creator||'').trim();
+  const ka=type==='Książka'?bookAuthorDisplay(a.creator):String(a.creator||'').trim();
+  const kb=type==='Książka'?bookAuthorDisplay(b.creator):String(b.creator||'').trim();
   const byCreator=ka.localeCompare(kb,'pl',{sensitivity:'base',numeric:true});
   if(byCreator!==0)return byCreator;
   const ya=Number.parseInt(a.year,10), yb=Number.parseInt(b.year,10);
